@@ -1,0 +1,102 @@
+using extension auth;
+
+module default {
+    # --- Schools (imported from IPEDS) ---
+    type School {
+        required unitid: int32 {
+            constraint exclusive;
+        };
+        required name: str;
+        alias_name: str;
+        required address: str;
+        required city: str;
+        required state: str {
+            constraint max_len_value(2);
+        };
+        required zip: str;
+        required control: ControlType;
+        required iclevel: int16;
+        website: str;
+        required latitude: float64;
+        required longitude: float64;
+        county: str;
+        locale: int16;
+        hbcu: bool;
+
+        # Computed properties
+        multi venues := .<school[is Venue];
+        venue_count := count(.venues);
+
+        index on (.name);
+        index on (.state);
+        index on ((.latitude, .longitude));
+    }
+
+    scalar type ControlType extending enum<public_, private_nonprofit>;
+    scalar type VenueCategory extending enum<bar, nightclub, frat, party_host, other>;
+
+    # --- Venues (user-submitted) ---
+    type Venue {
+        required name: str;
+        required category: VenueCategory;
+        description: str;
+        address: str;
+        latitude: float64;
+        longitude: float64;
+        required school: School;
+        required created_by: User;
+        required created_at: datetime {
+            default := datetime_current();
+        };
+        verified: bool {
+            default := false;
+        };
+
+        multi ratings := .<venue[is Rating];
+        avg_rating := math::mean(.ratings.score);
+        rating_count := count(.ratings);
+
+        index on (.name);
+        index on (.school);
+    }
+
+    # --- Ratings ---
+    type Rating {
+        required score: float32 {
+            constraint min_value(1);
+            constraint max_value(5);
+        };
+        review: str {
+            constraint max_len_value(2000);
+        };
+        required venue: Venue;
+        required author: User;
+        required created_at: datetime {
+            default := datetime_current();
+        };
+
+        # One rating per user per venue
+        constraint exclusive on ((.venue, .author));
+    }
+
+    # --- Users (linked to ext::auth) ---
+    type User {
+        required identity: ext::auth::Identity {
+            constraint exclusive;
+        };
+        required username: str {
+            constraint exclusive;
+        };
+        display_name: str;
+        avatar_url: str;
+        required created_at: datetime {
+            default := datetime_current();
+        };
+
+        # Anti-spam tracking
+        last_rating_at: datetime;
+        rating_count_today: int32 {
+            default := 0;
+        };
+    }
+}

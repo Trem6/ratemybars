@@ -1,0 +1,181 @@
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+
+interface FetchOptions extends RequestInit {
+  params?: Record<string, string>;
+}
+
+async function apiFetch<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+  const { params, ...fetchOptions } = options;
+
+  let url = `${API_URL}${endpoint}`;
+  if (params) {
+    const searchParams = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== "" && v !== undefined)
+    );
+    url += `?${searchParams.toString()}`;
+  }
+
+  const res = await fetch(url, {
+    ...fetchOptions,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...fetchOptions.headers,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(error.message || error.error || "Request failed");
+  }
+
+  return res.json();
+}
+
+// --- School APIs ---
+
+export interface School {
+  id: string;
+  unitid: number;
+  name: string;
+  alias_name?: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  control: "public" | "private_nonprofit";
+  iclevel: number;
+  website?: string;
+  latitude: number;
+  longitude: number;
+  county?: string;
+  locale?: number;
+  venue_count: number;
+  avg_rating?: number;
+}
+
+export interface MapSchool {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  state: string;
+  control: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface Venue {
+  id: string;
+  name: string;
+  category: "bar" | "nightclub" | "frat" | "party_host" | "other";
+  description?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  school_id: string;
+  school_name?: string;
+  created_at: string;
+  verified: boolean;
+  avg_rating: number;
+  rating_count: number;
+}
+
+export interface Rating {
+  id: string;
+  score: number;
+  review?: string;
+  venue_id: string;
+  author_id: string;
+  author_name?: string;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: {
+    id: string;
+    username: string;
+    display_name?: string;
+    avatar_url?: string;
+  };
+}
+
+// Schools
+export const searchSchools = (params: Record<string, string>) =>
+  apiFetch<PaginatedResponse<School>>("/api/schools", { params });
+
+export const getSchoolMapData = () =>
+  apiFetch<MapSchool[]>("/api/schools/map");
+
+export const getSchool = (id: string) =>
+  apiFetch<School>(`/api/schools/${id}`);
+
+export const getSchoolVenues = (id: string, page = 1, limit = 20) =>
+  apiFetch<PaginatedResponse<Venue>>(`/api/schools/${id}/venues`, {
+    params: { page: String(page), limit: String(limit) },
+  });
+
+export const getStates = () =>
+  apiFetch<string[]>("/api/schools/states");
+
+// Venues
+export const getVenue = (id: string) =>
+  apiFetch<Venue>(`/api/venues/${id}`);
+
+export const createVenue = (data: {
+  name: string;
+  category: string;
+  description?: string;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  school_id: string;
+}) =>
+  apiFetch<Venue>("/api/venues", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const getVenueRatings = (id: string) =>
+  apiFetch<Rating[]>(`/api/venues/${id}/ratings`);
+
+// Ratings
+export const createRating = (data: {
+  score: number;
+  review?: string;
+  venue_id: string;
+}) =>
+  apiFetch<Rating>("/api/ratings", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+// Auth
+export const register = (data: {
+  email: string;
+  password: string;
+  username: string;
+}) =>
+  apiFetch<AuthResponse>("/api/auth/register", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const login = (data: { email: string; password: string }) =>
+  apiFetch<AuthResponse>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const logout = () =>
+  apiFetch<{ message: string }>("/api/auth/logout", { method: "POST" });
+
+export const getMe = () =>
+  apiFetch<AuthResponse["user"]>("/api/auth/me");

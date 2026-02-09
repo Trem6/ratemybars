@@ -1,0 +1,142 @@
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"time"
+
+	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/ratemybars/backend/internal/handler"
+	"github.com/ratemybars/backend/internal/middleware"
+	"github.com/ratemybars/backend/internal/service"
+)
+
+func main() {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
+	}
+
+	// Initialize services
+	schoolSvc := service.NewSchoolService()
+	venueSvc := service.NewVenueService()
+	ratingSvc := service.NewRatingService()
+	authSvc := service.NewAuthService()
+
+	// Load school data
+	dataPath := os.Getenv("DATA_PATH")
+	if dataPath == "" {
+		// Try relative paths
+		candidates := []string{
+			"data/schools.json",
+			"../data/schools.json",
+			"../../data/schools.json",
+		}
+		for _, c := range candidates {
+			abs, _ := filepath.Abs(c)
+			if _, err := os.Stat(abs); err == nil {
+				dataPath = abs
+				break
+			}
+		}
+	}
+
+	if dataPath != "" {
+		if err := schoolSvc.LoadFromJSON(dataPath); err != nil {
+			log.Printf("WARNING: Failed to load school data: %v", err)
+		} else {
+			log.Printf("Loaded %d schools from %s", schoolSvc.Count(), dataPath)
+		}
+	} else {
+		log.Println("WARNING: No school data file found. Set DATA_PATH env var.")
+	}
+
+	// Initialize handlers
+	schoolHandler := handler.NewSchoolHandler(schoolSvc)
+	venueHandler := handler.NewVenueHandler(venueSvc)
+	ratingHandler := handler.NewRatingHandler(ratingSvc)
+	authHandler := handler.NewAuthHandler(authSvc)
+
+	// Build router
+	r := chi.NewRouter()
+
+	// Global middleware
+	r.Use(chimiddleware.RequestID)
+	r.Use(chimiddleware.RealIP)
+	r.Use(chimiddleware.Logger)
+	r.Use(chimiddleware.Recoverer)
+	r.Use(chimiddleware.Timeout(30 * time.Second))
+
+	// CORS
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins:   []string{frontendURL},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	}))
+
+	// Health check
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"ok","schools":` + fmt.Sprintf("%d", schoolSvc.Count()) + `}`))
+	})
+
+	// API routes
+	r.Route("/api", func(r chi.Router) {
+		// Public read routes (lenient rate limit)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.ReadRateLimit())
+
+			// School routes
+			r.Get("/schools", schoolHandler.Search)
+			r.Get("/schools/map", schoolHandler.GetMapData)
+			r.Get("/schools/geo", schoolHandler.GetGeo)
+			r.Get("/schools/states", schoolHandler.GetStates)
+			r.Get("/schools/{id}", schoolHandler.GetByID)
+			r.Get("/schools/{id}/venues", venueHandler.ListBySchool)
+
+			// Venue routes
+			r.Get("/venues/{id}", venueHandler.GetByID)
+			r.Get("/venues/{id}/ratings", ratingHandler.ListByVenue)
+		})
+
+		// Auth routes (moderate rate limit)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.RateLimit(0.2, 10)) // ~12 req/min
+			r.Use(middleware.SanitizeInput)
+
+			r.Post("/auth/register", authHandler.Register)
+			r.Post("/auth/login", authHandler.Login)
+			r.Post("/auth/logout", authHandler.Logout)
+		})
+
+		// Protected routes (auth required, strict rate limit)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.AuthRequired)
+			r.Use(middleware.StrictRateLimit())
+			r.Use(middleware.SanitizeInput)
+
+			r.Get("/auth/me", authHandler.Me)
+			r.Post("/venues", venueHandler.Create)
+			r.Post("/ratings", ratingHandler.Create)
+		})
+	})
+
+	log.Printf("RateMyBars API starting on :%s", port)
+	log.Printf("Frontend CORS origin: %s", frontendURL)
+	if err := http.ListenAndServe(":"+port, r); err != nil {
+		log.Fatal(err)
+	}
+}
