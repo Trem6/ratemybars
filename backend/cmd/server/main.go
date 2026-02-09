@@ -13,6 +13,7 @@ import (
 	"github.com/go-chi/cors"
 	"github.com/ratemybars/backend/internal/handler"
 	"github.com/ratemybars/backend/internal/middleware"
+	"github.com/ratemybars/backend/internal/seeddata"
 	"github.com/ratemybars/backend/internal/service"
 )
 
@@ -33,10 +34,9 @@ func main() {
 	ratingSvc := service.NewRatingService()
 	authSvc := service.NewAuthService()
 
-	// Load school data
+	// Load school data: prefer DATA_PATH env var, then local files, then embedded
 	dataPath := os.Getenv("DATA_PATH")
 	if dataPath == "" {
-		// Try relative paths
 		candidates := []string{
 			"data/schools.json",
 			"../data/schools.json",
@@ -53,12 +53,17 @@ func main() {
 
 	if dataPath != "" {
 		if err := schoolSvc.LoadFromJSON(dataPath); err != nil {
-			log.Printf("WARNING: Failed to load school data: %v", err)
+			log.Printf("WARNING: Failed to load school data from file: %v", err)
 		} else {
 			log.Printf("Loaded %d schools from %s", schoolSvc.Count(), dataPath)
 		}
 	} else {
-		log.Println("WARNING: No school data file found. Set DATA_PATH env var.")
+		// Fall back to embedded data
+		if err := schoolSvc.LoadFromBytes(seeddata.SchoolsJSON); err != nil {
+			log.Printf("WARNING: Failed to parse embedded school data: %v", err)
+		} else {
+			log.Printf("Loaded %d schools from embedded data", schoolSvc.Count())
+		}
 	}
 
 	// Initialize handlers

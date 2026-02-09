@@ -29,12 +29,21 @@ func NewSchoolService() *SchoolService {
 	}
 }
 
+// LoadFromBytes loads school data from raw JSON bytes.
+func (s *SchoolService) LoadFromBytes(data []byte) error {
+	return s.loadData(data)
+}
+
 // LoadFromJSON loads school data from the JSON file.
 func (s *SchoolService) LoadFromJSON(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("failed to read schools file: %w", err)
 	}
+	return s.loadData(data)
+}
+
+func (s *SchoolService) loadData(data []byte) error {
 
 	var rawSchools []struct {
 		UnitID    int     `json:"unitid"`
