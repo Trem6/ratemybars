@@ -141,7 +141,7 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
           })
             .setLngLat(geom.coordinates as [number, number])
             .setHTML(
-              `<div class="p-2">
+              `<div style="padding:10px 32px 10px 12px">
                 <div class="font-semibold text-sm">${feature.properties!.name}</div>
                 <div class="text-xs mt-1" style="color:#a1a1aa">${feature.properties!.state} &middot; ${
                   feature.properties!.control === "public" ? "Public" : "Private"

@@ -26,13 +26,22 @@ body {
 
 .maplibregl-popup-close-button {
   color: #a1a1aa !important;
-  font-size: 16px;
-  padding: 4px 8px;
+  font-size: 18px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 6px !important;
+  right: 6px !important;
+  padding: 0 !important;
+  line-height: 1;
+  border-radius: 4px;
 }
 
 .maplibregl-popup-close-button:hover {
   color: #ffffff !important;
-  background: transparent !important;
+  background: rgba(63, 63, 70, 0.5) !important;
 }
 
 /* Dark theme for map controls */
