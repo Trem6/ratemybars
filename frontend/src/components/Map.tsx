@@ -159,6 +159,32 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
       mapInstance.on("mouseleave", "school-points", () => {
         mapInstance.getCanvas().style.cursor = "";
       });
+
+      // Breathing glow pulse — animate school-glow opacity with sine wave
+      let glowFrame: number;
+      const startTime = performance.now();
+      const pulseGlow = (now: number) => {
+        const elapsed = (now - startTime) / 1000;
+        // Oscillate between -0.08 and +0.08 over ~3s cycle
+        const offset = Math.sin(elapsed * ((2 * Math.PI) / 3)) * 0.08;
+        try {
+          mapInstance.setPaintProperty("school-glow", "circle-opacity", [
+            "interpolate", ["linear"], ["zoom"],
+            3, 0.15 + offset,
+            8, 0.25 + offset,
+            14, 0.35 + offset,
+          ]);
+        } catch {
+          // Layer may not exist yet during cleanup
+        }
+        glowFrame = requestAnimationFrame(pulseGlow);
+      };
+      glowFrame = requestAnimationFrame(pulseGlow);
+
+      // Store cleanup for glow pulse
+      mapInstance.on("remove", () => {
+        cancelAnimationFrame(glowFrame);
+      });
     } catch (err) {
       console.error("Failed to load school data:", err);
     }
@@ -201,13 +227,16 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
     };
   }, [initMap]);
 
-  // Handle flyTo
+  // Handle flyTo — dramatic sweeping arc
   useEffect(() => {
     if (flyTo && map.current && loaded) {
       map.current.flyTo({
         center: [flyTo.lng, flyTo.lat],
         zoom: flyTo.zoom || 13,
-        duration: 2000,
+        speed: 0.8,
+        curve: 1.8,
+        duration: 3000,
+        essential: true,
       });
     }
   }, [flyTo, loaded]);
@@ -217,9 +246,9 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
       <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
       {!loaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-            <p className="text-zinc-400 text-sm">Loading map...</p>
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl skeleton-shimmer" />
+            <div className="w-28 h-3 rounded-lg skeleton-shimmer" />
           </div>
         </div>
       )}

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Compass, TrendingUp, Clock, ChevronRight, ChevronDown, ChevronUp, MapPin } from "lucide-react";
+import { Compass, TrendingUp, Clock, ChevronRight, ChevronDown, MapPin } from "lucide-react";
 import { searchSchools, type School } from "@/lib/api";
+import { ExplorePanelSkeleton } from "./Skeleton";
 
 interface ExplorePanelProps {
   onSchoolSelect: (school: School) => void;
@@ -118,9 +119,7 @@ export default function ExplorePanel({ onSchoolSelect }: ExplorePanelProps) {
       {/* Content */}
       <div className="max-h-64 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-6">
-            <div className="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-          </div>
+          <ExplorePanelSkeleton />
         ) : schools.length === 0 ? (
           <div className="py-6 text-center text-zinc-500 text-xs">
             No schools found

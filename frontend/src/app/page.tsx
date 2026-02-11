@@ -6,14 +6,17 @@ import SearchBar from "@/components/SearchBar";
 import SchoolPanel from "@/components/SchoolPanel";
 import StatsBar from "@/components/StatsBar";
 import ExplorePanel from "@/components/ExplorePanel";
+import ParticleBackground from "@/components/ParticleBackground";
+import SplashScreen from "@/components/SplashScreen";
 import type { School, MapSchool } from "@/lib/api";
 
-// Dynamic import for Map to avoid SSR issues with mapbox-gl
+// Dynamic import for Map to avoid SSR issues with maplibre-gl
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
   loading: () => (
-    <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">
-      <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+    <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 gap-4">
+      <div className="w-16 h-16 rounded-2xl skeleton-shimmer" />
+      <div className="w-24 h-3 rounded-lg skeleton-shimmer" />
     </div>
   ),
 });
@@ -37,6 +40,12 @@ export default function Home() {
 
   return (
     <div className="relative h-[calc(100vh-3.5rem)] overflow-hidden">
+      {/* Welcome splash */}
+      <SplashScreen />
+
+      {/* Particle constellation background */}
+      <ParticleBackground />
+
       {/* Map */}
       <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} />
 

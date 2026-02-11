@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback } from "react";
 import { X, MapPin, Globe, Star, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { getSchool, getSchoolVenues, type School, type Venue } from "@/lib/api";
+import { useToast } from "@/lib/toast-context";
+import { SchoolPanelSkeleton } from "./Skeleton";
 import VenueCard from "./VenueCard";
 
 interface SchoolPanelProps {
@@ -15,6 +17,7 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
   const [school, setSchool] = useState<School | null>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
 
   const fetchData = useCallback(async (id: string) => {
     try {
@@ -36,11 +39,7 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
   }, [schoolId, fetchData]);
 
   if (loading) {
-    return (
-      <div className="fixed right-0 top-14 bottom-0 w-full sm:w-96 bg-zinc-950/80 backdrop-blur-2xl border-l border-zinc-700/30 z-40 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <SchoolPanelSkeleton />;
   }
 
   if (!school) return null;
@@ -113,6 +112,7 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
             </h3>
             <Link
               href={`/submit?school=${schoolId}`}
+              onClick={() => showToast("Taking you to add a venue!", "info")}
               className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-0.5 transition-colors"
             >
               Add <ChevronRight size={12} />
@@ -125,6 +125,7 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
               <p className="text-zinc-500 text-sm">No venues yet</p>
               <Link
                 href={`/submit?school=${schoolId}`}
+                onClick={() => showToast("Be a trailblazer! Add the first venue.", "success")}
                 className="inline-flex mt-2 text-xs text-violet-400 hover:text-violet-300"
               >
                 Be the first to add one
