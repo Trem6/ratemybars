@@ -13,6 +13,7 @@ import {
   Map as MapIcon,
   Star,
 } from "lucide-react";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { getSchool, getSchoolVenues, type School, type Venue } from "@/lib/api";
 import VenueCard from "@/components/VenueCard";
 
@@ -24,7 +25,7 @@ function MiniMap({ latitude, longitude }: { latitude: number; longitude: number 
 
     async function init() {
       const maplibregl = (await import("maplibre-gl")).default;
-      await import("maplibre-gl/dist/maplibre-gl.css");
+      // CSS is already loaded globally via Map component
 
       if (!mapRef.current) return;
 
