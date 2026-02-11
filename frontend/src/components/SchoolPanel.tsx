@@ -37,7 +37,7 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
 
   if (loading) {
     return (
-      <div className="fixed right-0 top-14 bottom-0 w-full sm:w-96 bg-zinc-950 border-l border-zinc-800/50 z-40 flex items-center justify-center">
+      <div className="fixed right-0 top-14 bottom-0 w-full sm:w-96 bg-zinc-950/80 backdrop-blur-2xl border-l border-zinc-700/30 z-40 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -46,9 +46,9 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
   if (!school) return null;
 
   return (
-    <div className="fixed right-0 top-14 bottom-0 w-full sm:w-96 bg-zinc-950 border-l border-zinc-800/50 z-40 overflow-y-auto animate-slide-in">
+    <div className="fixed right-0 top-14 bottom-0 w-full sm:w-96 bg-zinc-950/80 backdrop-blur-2xl border-l border-zinc-700/30 z-40 overflow-y-auto animate-slide-in">
       {/* Header */}
-      <div className="sticky top-0 bg-zinc-950/95 backdrop-blur-sm border-b border-zinc-800/50 p-4">
+      <div className="sticky top-0 bg-zinc-950/70 backdrop-blur-xl border-b border-zinc-700/30 p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <h2 className="text-lg font-bold text-white truncate">{school.name}</h2>

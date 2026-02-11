@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 
@@ -160,6 +161,18 @@ func (s *SchoolService) Search(_ context.Context, params model.SchoolSearchParam
 		}
 
 		filtered = append(filtered, school)
+	}
+
+	// Sort results
+	switch params.Sort {
+	case "venue_count":
+		sort.Slice(filtered, func(i, j int) bool {
+			return filtered[i].VenueCount > filtered[j].VenueCount
+		})
+	case "name":
+		sort.Slice(filtered, func(i, j int) bool {
+			return filtered[i].Name < filtered[j].Name
+		})
 	}
 
 	total := len(filtered)

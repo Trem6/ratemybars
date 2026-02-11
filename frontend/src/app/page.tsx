@@ -4,6 +4,8 @@ import { useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import SearchBar from "@/components/SearchBar";
 import SchoolPanel from "@/components/SchoolPanel";
+import StatsBar from "@/components/StatsBar";
+import ExplorePanel from "@/components/ExplorePanel";
 import type { School, MapSchool } from "@/lib/api";
 
 // Dynamic import for Map to avoid SSR issues with mapbox-gl
@@ -45,8 +47,18 @@ export default function Home() {
         />
       </div>
 
+      {/* Explore Panel */}
+      <div className="absolute top-20 left-4 z-30 hidden sm:block">
+        <ExplorePanel onSchoolSelect={handleSchoolSelect} />
+      </div>
+
+      {/* Stats Bar */}
+      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 hidden sm:block">
+        <StatsBar />
+      </div>
+
       {/* Legend */}
-      <div className="absolute bottom-6 left-4 z-30 bg-zinc-900/80 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-3 hidden sm:block">
+      <div className="absolute bottom-6 left-4 z-30 bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/30 rounded-xl p-3 hidden sm:block shadow-2xl">
         <div className="flex flex-col gap-1.5 text-xs">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#00ffaa", boxShadow: "0 0 4px #00ffaa" }} />

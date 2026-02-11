@@ -122,3 +122,10 @@ func (s *VenueService) ListBySchool(_ context.Context, schoolID string, page, li
 		TotalPages: totalPages,
 	}, nil
 }
+
+// Count returns the total number of venues.
+func (s *VenueService) Count() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.venues)
+}

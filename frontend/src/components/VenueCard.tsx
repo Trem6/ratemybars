@@ -63,7 +63,7 @@ export default function VenueCard({ venue, compact = false }: VenueCardProps) {
     return (
       <Link
         href={`/venue/${venue.id}`}
-        className="block p-3 bg-zinc-900/50 hover:bg-zinc-800/50 border border-zinc-800/50 rounded-xl transition-colors group"
+        className="block p-3 bg-zinc-900/60 backdrop-blur-xl hover:bg-zinc-800/60 border border-zinc-700/30 hover:border-violet-500/20 hover:shadow-lg hover:shadow-violet-500/5 rounded-xl transition-all group"
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
@@ -89,7 +89,7 @@ export default function VenueCard({ venue, compact = false }: VenueCardProps) {
   return (
     <Link
       href={`/venue/${venue.id}`}
-      className="block p-4 bg-zinc-900/50 hover:bg-zinc-800/50 border border-zinc-800/50 rounded-xl transition-all group"
+      className="block p-4 bg-zinc-900/60 backdrop-blur-xl hover:bg-zinc-800/60 border border-zinc-700/30 hover:border-violet-500/20 hover:shadow-lg hover:shadow-violet-500/5 rounded-xl transition-all group"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">

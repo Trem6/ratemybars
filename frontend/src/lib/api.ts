@@ -107,6 +107,16 @@ export interface AuthResponse {
   };
 }
 
+// Stats
+export interface SiteStats {
+  schools: number;
+  venues: number;
+  ratings: number;
+}
+
+export const getStats = () =>
+  apiFetch<SiteStats>("/api/stats");
+
 // Schools
 export const searchSchools = (params: Record<string, string>) =>
   apiFetch<PaginatedResponse<School>>("/api/schools", { params });

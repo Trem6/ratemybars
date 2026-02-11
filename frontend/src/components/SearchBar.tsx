@@ -99,7 +99,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarP
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setShowResults(true)}
           placeholder="Search schools by name or city..."
-          className="w-full pl-10 pr-20 py-2.5 bg-zinc-900/90 border border-zinc-700/50 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-violet-500/50 focus:ring-1 focus:ring-violet-500/20 transition-all"
+          className="w-full pl-10 pr-20 py-2.5 bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/30 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-violet-500/40 focus:ring-2 focus:ring-violet-500/20 focus:shadow-lg focus:shadow-violet-500/5 transition-all"
         />
         <div className="absolute right-2 flex items-center gap-1">
           {query && (
@@ -129,7 +129,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarP
 
       {/* Filter Panel */}
       {showFilters && (
-        <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-2xl z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-zinc-900/80 backdrop-blur-xl border border-zinc-700/30 rounded-xl shadow-2xl z-50">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-zinc-400 mb-1">State</label>
@@ -178,7 +178,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarP
 
       {/* Results Dropdown */}
       {showResults && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/80 backdrop-blur-xl border border-zinc-700/30 rounded-xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto">
           {results.map((school) => (
             <button
               key={school.id}
@@ -202,7 +202,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarP
       )}
 
       {showResults && query.length >= 2 && results.length === 0 && !loading && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900 border border-zinc-700/50 rounded-xl shadow-2xl p-4 z-50">
+        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/80 backdrop-blur-xl border border-zinc-700/30 rounded-xl shadow-2xl p-4 z-50">
           <p className="text-zinc-500 text-sm text-center">No schools found</p>
         </div>
       )}

@@ -34,6 +34,7 @@ func (h *SchoolHandler) Search(w http.ResponseWriter, r *http.Request) {
 		Query:   q.Get("q"),
 		State:   q.Get("state"),
 		Control: q.Get("control"),
+		Sort:    q.Get("sort"),
 		Page:    page,
 		Limit:   limit,
 		MinLat:  minLat,

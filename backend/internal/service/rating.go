@@ -103,3 +103,10 @@ func (s *RatingService) ListByVenue(_ context.Context, venueID string) ([]model.
 	}
 	return results, nil
 }
+
+// Count returns the total number of ratings.
+func (s *RatingService) Count() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return len(s.ratings)
+}

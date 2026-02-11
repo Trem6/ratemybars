@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -115,6 +116,16 @@ func main() {
 			// Venue routes
 			r.Get("/venues/{id}", venueHandler.GetByID)
 			r.Get("/venues/{id}/ratings", ratingHandler.ListByVenue)
+
+			// Stats
+			r.Get("/stats", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(map[string]int{
+					"schools": schoolSvc.Count(),
+					"venues":  venueSvc.Count(),
+					"ratings": ratingSvc.Count(),
+				})
+			})
 		})
 
 		// Auth routes (moderate rate limit)
