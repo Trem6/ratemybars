@@ -6,7 +6,6 @@ import SearchBar from "@/components/SearchBar";
 import SchoolPanel from "@/components/SchoolPanel";
 import StatsBar from "@/components/StatsBar";
 import ExplorePanel from "@/components/ExplorePanel";
-import ParticleBackground from "@/components/ParticleBackground";
 import SplashScreen from "@/components/SplashScreen";
 import type { School, MapSchool } from "@/lib/api";
 
@@ -42,9 +41,6 @@ export default function Home() {
     <div className="relative h-[calc(100vh-3.5rem)] overflow-hidden">
       {/* Welcome splash */}
       <SplashScreen />
-
-      {/* Particle constellation background */}
-      <ParticleBackground />
 
       {/* Map */}
       <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} />

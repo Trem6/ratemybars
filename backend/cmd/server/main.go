@@ -67,6 +67,48 @@ func main() {
 		}
 	}
 
+	// Seed venue data
+	venueSeeds := make([]struct {
+		SchoolID    string
+		Name        string
+		Category    string
+		Description string
+		Address     string
+		Latitude    float64
+		Longitude   float64
+	}, len(seeddata.SeedVenues))
+	for i, sv := range seeddata.SeedVenues {
+		venueSeeds[i].SchoolID = sv.SchoolID
+		venueSeeds[i].Name = sv.Name
+		venueSeeds[i].Category = sv.Category
+		venueSeeds[i].Description = sv.Description
+		venueSeeds[i].Address = sv.Address
+		venueSeeds[i].Latitude = sv.Latitude
+		venueSeeds[i].Longitude = sv.Longitude
+	}
+	venueSvc.LoadSeedData(venueSeeds)
+	log.Printf("Seeded %d venues", venueSvc.Count())
+
+	// Seed ratings for all venues
+	allVenues := venueSvc.GetAllVenues()
+	ratingSeeds := make([]struct{ ID string }, len(allVenues))
+	for i, v := range allVenues {
+		ratingSeeds[i].ID = v.ID
+	}
+	ratingSvc.LoadSeedData(ratingSeeds)
+	log.Printf("Seeded %d ratings", ratingSvc.Count())
+
+	// Update venue rating stats
+	venueSvc.UpdateRatingStats(ratingSvc.GetVenueStats)
+
+	// Update venue counts on schools
+	venueCounts := make(map[string]int)
+	for _, v := range allVenues {
+		venueCounts[v.SchoolID]++
+	}
+	schoolSvc.UpdateVenueCounts(venueCounts)
+	log.Printf("Updated venue counts for %d schools", len(venueCounts))
+
 	// Initialize handlers
 	schoolHandler := handler.NewSchoolHandler(schoolSvc)
 	venueHandler := handler.NewVenueHandler(venueSvc)
@@ -85,7 +127,7 @@ func main() {
 
 	// CORS
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{frontendURL},
+		AllowedOrigins:   []string{frontendURL, "https://frontend-orpin-alpha-25.vercel.app"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},

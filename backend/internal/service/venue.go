@@ -129,3 +129,56 @@ func (s *VenueService) Count() int {
 	defer s.mu.RUnlock()
 	return len(s.venues)
 }
+
+// LoadSeedData populates the venue service with seed data.
+func (s *VenueService) LoadSeedData(seeds []struct {
+	SchoolID    string
+	Name        string
+	Category    string
+	Description string
+	Address     string
+	Latitude    float64
+	Longitude   float64
+}) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, seed := range seeds {
+		venue := model.Venue{
+			ID:          fmt.Sprintf("venue_%d", s.nextID),
+			Name:        seed.Name,
+			Category:    seed.Category,
+			Description: seed.Description,
+			Address:     seed.Address,
+			Latitude:    seed.Latitude,
+			Longitude:   seed.Longitude,
+			SchoolID:    seed.SchoolID,
+			CreatedByID: "system",
+			CreatedAt:   time.Now().Add(-time.Duration(s.nextID) * 24 * time.Hour), // stagger dates
+			Verified:    true,
+		}
+		s.nextID++
+		s.venues = append(s.venues, venue)
+	}
+}
+
+// GetAllVenues returns all venues (for computing counts).
+func (s *VenueService) GetAllVenues() []model.Venue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	out := make([]model.Venue, len(s.venues))
+	copy(out, s.venues)
+	return out
+}
+
+// UpdateRatingStats updates avg_rating and rating_count for all venues.
+func (s *VenueService) UpdateRatingStats(statsFunc func(venueID string) (float64, int)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.venues {
+		avg, count := statsFunc(s.venues[i].ID)
+		s.venues[i].AvgRating = avg
+		s.venues[i].RatingCount = count
+	}
+}

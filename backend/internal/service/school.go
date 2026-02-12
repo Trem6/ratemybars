@@ -266,3 +266,27 @@ func (s *SchoolService) Count() int {
 	defer s.mu.RUnlock()
 	return len(s.schools)
 }
+
+// UpdateVenueCounts updates each school's VenueCount based on venue data.
+func (s *SchoolService) UpdateVenueCounts(venueCounts map[string]int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.schools {
+		if count, ok := venueCounts[s.schools[i].ID]; ok {
+			s.schools[i].VenueCount = count
+		}
+	}
+}
+
+// UpdateVenueRatings updates venue avg ratings via a callback.
+func (s *SchoolService) UpdateSchoolRatings(schoolAvgs map[string]float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.schools {
+		if avg, ok := schoolAvgs[s.schools[i].ID]; ok {
+			s.schools[i].AvgRating = avg
+		}
+	}
+}
