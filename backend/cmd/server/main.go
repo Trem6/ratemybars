@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ratemybars/backend/internal/handler"
 	"github.com/ratemybars/backend/internal/middleware"
 	"github.com/ratemybars/backend/internal/seeddata"
@@ -29,11 +31,37 @@ func main() {
 		frontendURL = "http://localhost:3000"
 	}
 
+	// Connect to PostgreSQL (Supabase)
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL == "" {
+		log.Fatal("DATABASE_URL environment variable is required")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	dbPool, err := pgxpool.New(ctx, dbURL)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer dbPool.Close()
+
+	if err := dbPool.Ping(ctx); err != nil {
+		log.Fatalf("Failed to ping database: %v", err)
+	}
+	log.Println("Connected to PostgreSQL database")
+
 	// Initialize services
 	schoolSvc := service.NewSchoolService()
 	venueSvc := service.NewVenueService()
 	ratingSvc := service.NewRatingService()
-	authSvc := service.NewAuthService()
+	authSvc := service.NewAuthService(dbPool)
+
+	// Run database migrations
+	if err := authSvc.Migrate(context.Background()); err != nil {
+		log.Fatalf("Failed to run database migrations: %v", err)
+	}
+	log.Println("Database migrations complete")
 
 	// Load school data: prefer DATA_PATH env var, then local files, then embedded
 	dataPath := os.Getenv("DATA_PATH")
