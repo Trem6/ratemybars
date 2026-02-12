@@ -23,9 +23,9 @@ export default function ParticleBackground() {
     let animationId: number;
     let particles: Particle[] = [];
 
-    const PARTICLE_COUNT = 60;
-    const CONNECTION_DISTANCE = 120;
-    const SPEED = 0.3;
+    const PARTICLE_COUNT = 50;
+    const CONNECTION_DISTANCE = 140;
+    const SPEED = 0.25;
 
     function resize() {
       if (!canvas) return;
@@ -76,7 +76,7 @@ export default function ParticleBackground() {
           const dist = Math.sqrt(dx * dx + dy * dy);
 
           if (dist < CONNECTION_DISTANCE) {
-            const opacity = (1 - dist / CONNECTION_DISTANCE) * 0.15;
+            const opacity = (1 - dist / CONNECTION_DISTANCE) * 0.08;
             ctx.beginPath();
             ctx.strokeStyle = `rgba(139, 92, 246, ${opacity})`;
             ctx.lineWidth = 0.5;
@@ -91,7 +91,7 @@ export default function ParticleBackground() {
       for (const p of particles) {
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
         ctx.fill();
       }
 
@@ -116,8 +116,7 @@ export default function ParticleBackground() {
   return (
     <canvas
       ref={canvasRef}
-      className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ zIndex: 0, opacity: 0.3 }}
+      className="absolute inset-0 w-full h-full pointer-events-none z-10"
     />
   );
 }

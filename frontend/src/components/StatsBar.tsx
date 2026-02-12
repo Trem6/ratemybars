@@ -9,7 +9,10 @@ function useCountUp(target: number, duration = 1500) {
   const frameRef = useRef<number>(0);
 
   useEffect(() => {
-    if (target === 0) return;
+    if (target <= 0) {
+      setValue(target);
+      return;
+    }
     const start = performance.now();
 
     const tick = (now: number) => {
@@ -56,22 +59,20 @@ function StatItem({
 }
 
 export default function StatsBar() {
-  const [stats, setStats] = useState<SiteStats | null>(null);
+  const [stats, setStats] = useState<SiteStats>({ schools: 2466, venues: 0, ratings: 0 });
 
   const fetchStats = useCallback(async () => {
     try {
       const data = await getStats();
       setStats(data);
     } catch {
-      // Silently fail - stats are non-critical
+      // Keep fallback values
     }
   }, []);
 
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
-
-  if (!stats) return null;
 
   return (
     <div className="bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/30 rounded-xl px-5 py-2.5 flex items-center gap-6 text-sm shadow-2xl">

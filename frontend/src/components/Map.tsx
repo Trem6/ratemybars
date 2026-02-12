@@ -160,19 +160,28 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
         mapInstance.getCanvas().style.cursor = "";
       });
 
-      // Breathing glow pulse — animate school-glow opacity with sine wave
+      // Breathing glow pulse — animate school-glow radius + opacity with sine wave
       let glowFrame: number;
       const startTime = performance.now();
       const pulseGlow = (now: number) => {
         const elapsed = (now - startTime) / 1000;
-        // Oscillate between -0.08 and +0.08 over ~3s cycle
-        const offset = Math.sin(elapsed * ((2 * Math.PI) / 3)) * 0.08;
+        // 4-second cycle, noticeable swing
+        const wave = Math.sin(elapsed * ((2 * Math.PI) / 4));
+        const opacityOffset = wave * 0.12;
+        const radiusScale = 1 + wave * 0.15; // radius pulses +/- 15%
         try {
           mapInstance.setPaintProperty("school-glow", "circle-opacity", [
             "interpolate", ["linear"], ["zoom"],
-            3, 0.15 + offset,
-            8, 0.25 + offset,
-            14, 0.35 + offset,
+            3, 0.15 + opacityOffset,
+            8, 0.25 + opacityOffset,
+            14, 0.35 + opacityOffset,
+          ]);
+          mapInstance.setPaintProperty("school-glow", "circle-radius", [
+            "interpolate", ["exponential", 1.5], ["zoom"],
+            3, 4 * radiusScale,
+            7, 8 * radiusScale,
+            10, 14 * radiusScale,
+            14, 24 * radiusScale,
           ]);
         } catch {
           // Layer may not exist yet during cleanup
