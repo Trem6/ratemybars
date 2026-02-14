@@ -7,6 +7,7 @@ import SchoolPanel from "@/components/SchoolPanel";
 import StatsBar from "@/components/StatsBar";
 import ExplorePanel from "@/components/ExplorePanel";
 import SplashScreen from "@/components/SplashScreen";
+import ActivityTicker from "@/components/ActivityTicker";
 import type { School, MapSchool } from "@/lib/api";
 
 // Dynamic import for Map to avoid SSR issues with maplibre-gl
@@ -57,8 +58,15 @@ export default function Home() {
         <ExplorePanel onSchoolSelect={handleSchoolSelect} />
       </div>
 
+      {/* Activity Ticker */}
+      <div className="absolute bottom-24 left-0 right-0 z-30 hidden sm:block">
+        <div className="bg-zinc-950/60 backdrop-blur-xl border-y border-zinc-700/20">
+          <ActivityTicker />
+        </div>
+      </div>
+
       {/* Stats Bar */}
-      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-30 hidden sm:block">
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 hidden sm:block">
         <StatsBar />
       </div>
 

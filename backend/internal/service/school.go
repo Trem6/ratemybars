@@ -236,13 +236,14 @@ func (s *SchoolService) GetAllForMap(_ context.Context) ([]map[string]interface{
 	results := make([]map[string]interface{}, 0, len(s.schools))
 	for _, school := range s.schools {
 		results = append(results, map[string]interface{}{
-			"id":        school.ID,
-			"name":      school.Name,
-			"latitude":  school.Latitude,
-			"longitude": school.Longitude,
-			"state":     school.State,
-			"control":   school.Control,
-			"hbcu":      school.HBCU,
+			"id":          school.ID,
+			"name":        school.Name,
+			"latitude":    school.Latitude,
+			"longitude":   school.Longitude,
+			"state":       school.State,
+			"control":     school.Control,
+			"venue_count": school.VenueCount,
+			"avg_rating":  school.AvgRating,
 		})
 	}
 	return results, nil

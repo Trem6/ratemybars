@@ -16,6 +16,9 @@ import {
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getSchool, getSchoolVenues, type School, type Venue } from "@/lib/api";
 import VenueCard from "@/components/VenueCard";
+import TierBadge from "@/components/TierBadge";
+import PartyGauge from "@/components/PartyGauge";
+import AnimatedStats from "@/components/AnimatedStats";
 
 function MiniMap({ latitude, longitude }: { latitude: number; longitude: number }) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -202,15 +205,13 @@ export default function SchoolPage() {
           </Link>
 
           <div className="flex flex-col sm:flex-row gap-6 animate-fade-in-up">
-            {/* Icon */}
-            <div
-              className={`w-16 h-16 rounded-2xl flex items-center justify-center shrink-0 shadow-lg ${
-                isPublic
-                  ? "bg-gradient-to-br from-emerald-500 to-teal-600"
-                  : "bg-gradient-to-br from-violet-500 to-fuchsia-600"
-              }`}
-            >
-              <GraduationCap size={32} className="text-white" />
+            {/* Tier Badge */}
+            <div className="shrink-0">
+              <TierBadge
+                venueCount={school.venue_count}
+                avgRating={school.avg_rating || 0}
+                size="lg"
+              />
             </div>
 
             {/* Title */}
@@ -232,6 +233,14 @@ export default function SchoolPage() {
                   4-Year Institution
                 </span>
               </div>
+            </div>
+
+            {/* Party Score Gauge */}
+            <div className="hidden sm:block shrink-0">
+              <PartyGauge
+                venueCount={school.venue_count}
+                avgRating={school.avg_rating || 0}
+              />
             </div>
           </div>
         </div>
@@ -312,8 +321,15 @@ export default function SchoolPage() {
           </div>
         </div>
 
+        {/* Animated Stats */}
+        {venues.length > 0 && (
+          <div ref={setRef(2)} className="fade-in-section">
+            <AnimatedStats venues={venues} />
+          </div>
+        )}
+
         {/* Venues Section */}
-        <div ref={setRef(2)} className="fade-in-section">
+        <div ref={setRef(3)} className="fade-in-section">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-bold text-white">
               Venues & Party Spots

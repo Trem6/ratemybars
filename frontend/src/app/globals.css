@@ -218,3 +218,21 @@ body {
 .animate-toast-out {
   animation: toastOut 0.25s ease-in both;
 }
+
+/* Activity ticker marquee */
+@keyframes ticker {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-ticker {
+  animation: ticker 60s linear infinite;
+}
+
+.animate-ticker:hover {
+  animation-play-state: paused;
+}

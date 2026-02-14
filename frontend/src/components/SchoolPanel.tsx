@@ -7,6 +7,7 @@ import { getSchool, getSchoolVenues, type School, type Venue } from "@/lib/api";
 import { useToast } from "@/lib/toast-context";
 import { SchoolPanelSkeleton } from "./Skeleton";
 import VenueCard from "./VenueCard";
+import { TierTag } from "./TierBadge";
 
 interface SchoolPanelProps {
   schoolId: string;
@@ -61,6 +62,7 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
               >
                 {school.control === "public" ? "Public" : "Private"}
               </span>
+              <TierTag venueCount={school.venue_count} avgRating={school.avg_rating || 0} />
             </div>
           </div>
           <button

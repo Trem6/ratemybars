@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { getSchoolMapData, type MapSchool } from "@/lib/api";
+import { computeTier, getTierConfig } from "./TierBadge";
 
 // Free dark map tile styles (no API key required)
 const DARK_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
@@ -44,7 +45,8 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
             name: s.name,
             state: s.state,
             control: s.control,
-          
+            venue_count: s.venue_count || 0,
+            avg_rating: s.avg_rating || 0,
           },
         })),
       };
@@ -131,9 +133,14 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
           onSchoolClickRef.current(school);
         }
 
-        // Show popup
+        // Show popup with tier badge
         const geom = feature.geometry;
         if (geom.type === "Point") {
+          const vc = feature.properties!.venue_count || 0;
+          const ar = feature.properties!.avg_rating || 0;
+          const tier = computeTier(vc, ar);
+          const tierCfg = getTierConfig(tier);
+
           new maplibregl.Popup({
             closeButton: true,
             closeOnClick: true,
@@ -142,10 +149,13 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
             .setLngLat(geom.coordinates as [number, number])
             .setHTML(
               `<div style="padding:10px 32px 10px 12px">
-                <div class="font-semibold text-sm">${feature.properties!.name}</div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:6px;font-size:11px;font-weight:800;color:${tierCfg.color};background:rgba(255,255,255,0.05);border:1px solid ${tierCfg.color}33;">${tier}</span>
+                  <div class="font-semibold text-sm">${feature.properties!.name}</div>
+                </div>
                 <div class="text-xs mt-1" style="color:#a1a1aa">${feature.properties!.state} &middot; ${
                   feature.properties!.control === "public" ? "Public" : "Private"
-                }</div>
+                }${vc > 0 ? ` &middot; ${vc} venue${vc > 1 ? "s" : ""}` : ""}</div>
               </div>`
             )
             .addTo(mapInstance);

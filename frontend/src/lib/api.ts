@@ -88,6 +88,8 @@ export interface MapSchool {
   longitude: number;
   state: string;
   control: string;
+  venue_count: number;
+  avg_rating: number;
 }
 
 export interface PaginatedResponse<T> {
