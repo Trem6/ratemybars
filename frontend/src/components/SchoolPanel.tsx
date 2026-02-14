@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { X, MapPin, Globe, Star, ChevronRight } from "lucide-react";
+import { X, MapPin, Globe, Star, ChevronRight, ExternalLink } from "lucide-react";
 import Link from "next/link";
 import { getSchool, getSchoolVenues, type School, type Venue } from "@/lib/api";
 import { useToast } from "@/lib/toast-context";
@@ -52,7 +52,9 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
       <div className="sticky top-0 bg-zinc-950/70 backdrop-blur-xl border-b border-zinc-700/30 p-4">
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
-            <h2 className="text-lg font-bold text-white truncate">{school.name}</h2>
+            <Link href={`/school/${schoolId}`} className="text-lg font-bold text-white truncate block hover:text-violet-300 transition-colors">
+              {school.name}
+            </Link>
             <div className="flex items-center gap-2 mt-1">
               <span
                 className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -109,6 +111,15 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
           <TierBadge venueCount={school.venue_count} avgRating={school.avg_rating || 0} size="md" />
           <PartyGauge venueCount={school.venue_count} avgRating={school.avg_rating || 0} />
         </div>
+
+        {/* View Full Page Link */}
+        <Link
+          href={`/school/${schoolId}`}
+          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-violet-400 hover:text-white border border-zinc-700/30 hover:border-violet-500/30 hover:bg-violet-500/10 transition-all"
+        >
+          <ExternalLink size={14} />
+          View Full Page
+        </Link>
 
         {/* Venues Section */}
         <div>

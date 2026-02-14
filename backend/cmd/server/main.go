@@ -140,6 +140,24 @@ func main() {
 	schoolSvc.UpdateVenueCounts(venueCounts)
 	log.Printf("Updated venue counts for %d schools", len(venueCounts))
 
+	// Compute school avg ratings from their venues
+	schoolAvgs := make(map[string]float64)
+	schoolVenueRatings := make(map[string][]float64)
+	for _, v := range venueSvc.GetAllVenues() {
+		if v.AvgRating > 0 {
+			schoolVenueRatings[v.SchoolID] = append(schoolVenueRatings[v.SchoolID], v.AvgRating)
+		}
+	}
+	for sid, ratings := range schoolVenueRatings {
+		var sum float64
+		for _, r := range ratings {
+			sum += r
+		}
+		schoolAvgs[sid] = sum / float64(len(ratings))
+	}
+	schoolSvc.UpdateSchoolRatings(schoolAvgs)
+	log.Printf("Updated avg ratings for %d schools", len(schoolAvgs))
+
 	// Initialize handlers
 	schoolHandler := handler.NewSchoolHandler(schoolSvc)
 	venueHandler := handler.NewVenueHandler(venueSvc)
