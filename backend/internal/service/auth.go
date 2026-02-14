@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -15,18 +16,43 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// AuthService handles user registration and authentication
-// using PostgreSQL for persistent storage.
+// AuthService handles user registration and authentication.
+// Supports PostgreSQL for persistent storage or in-memory fallback.
 type AuthService struct {
-	pool *pgxpool.Pool
+	pool *pgxpool.Pool // nil = in-memory mode
+
+	// In-memory fallback fields
+	mu    sync.RWMutex
+	users map[string]*userRecord
 }
 
+type userRecord struct {
+	User         model.User
+	Email        string
+	PasswordHash string
+}
+
+// NewAuthService creates an auth service backed by PostgreSQL.
 func NewAuthService(pool *pgxpool.Pool) *AuthService {
 	return &AuthService{pool: pool}
 }
 
+// NewAuthServiceInMemory creates an auth service with in-memory storage (no persistence).
+func NewAuthServiceInMemory() *AuthService {
+	return &AuthService{
+		users: make(map[string]*userRecord),
+	}
+}
+
+func (s *AuthService) persistent() bool {
+	return s.pool != nil
+}
+
 // Migrate creates the users table if it doesn't exist.
 func (s *AuthService) Migrate(ctx context.Context) error {
+	if !s.persistent() {
+		return nil
+	}
 	query := `
 		CREATE TABLE IF NOT EXISTS users (
 			id            TEXT PRIMARY KEY,
@@ -60,24 +86,13 @@ func (s *AuthService) Register(req model.RegisterRequest) (*model.AuthResponse, 
 	userID := generateID()
 	now := time.Now()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	_, err = s.pool.Exec(ctx,
-		`INSERT INTO users (id, email, username, password_hash, created_at)
-		 VALUES ($1, $2, $3, $4, $5)`,
-		userID, req.Email, req.Username, string(hash), now,
-	)
+	if s.persistent() {
+		err = s.registerDB(userID, req.Email, req.Username, string(hash), now)
+	} else {
+		err = s.registerMemory(userID, req.Email, req.Username, string(hash), now)
+	}
 	if err != nil {
-		// Check for unique constraint violations
-		errMsg := err.Error()
-		if contains(errMsg, "users_email_key") || contains(errMsg, "unique") && contains(errMsg, "email") {
-			return nil, fmt.Errorf("email already registered")
-		}
-		if contains(errMsg, "users_username_key") || contains(errMsg, "unique") && contains(errMsg, "username") {
-			return nil, fmt.Errorf("username already taken")
-		}
-		return nil, fmt.Errorf("failed to create user: %w", err)
+		return nil, err
 	}
 
 	user := model.User{
@@ -97,38 +112,74 @@ func (s *AuthService) Register(req model.RegisterRequest) (*model.AuthResponse, 
 	}, nil
 }
 
+func (s *AuthService) registerDB(id, email, username, hash string, now time.Time) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	_, err := s.pool.Exec(ctx,
+		`INSERT INTO users (id, email, username, password_hash, created_at)
+		 VALUES ($1, $2, $3, $4, $5)`,
+		id, email, username, hash, now,
+	)
+	if err != nil {
+		errMsg := err.Error()
+		if contains(errMsg, "users_email_key") || contains(errMsg, "unique") && contains(errMsg, "email") {
+			return fmt.Errorf("email already registered")
+		}
+		if contains(errMsg, "users_username_key") || contains(errMsg, "unique") && contains(errMsg, "username") {
+			return fmt.Errorf("username already taken")
+		}
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+	return nil
+}
+
+func (s *AuthService) registerMemory(id, email, username, hash string, now time.Time) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if _, exists := s.users[email]; exists {
+		return fmt.Errorf("email already registered")
+	}
+	for _, rec := range s.users {
+		if rec.User.Username == username {
+			return fmt.Errorf("username already taken")
+		}
+	}
+
+	s.users[email] = &userRecord{
+		User: model.User{
+			ID:        id,
+			Username:  username,
+			CreatedAt: now,
+		},
+		Email:        email,
+		PasswordHash: hash,
+	}
+	return nil
+}
+
 // Login authenticates a user with email/password.
 func (s *AuthService) Login(req model.LoginRequest) (*model.AuthResponse, error) {
 	if req.Email == "" || req.Password == "" {
 		return nil, fmt.Errorf("email and password are required")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
+	var user model.User
+	var passwordHash string
+	var err error
 
-	var userID, username, passwordHash string
-	var createdAt time.Time
-
-	err := s.pool.QueryRow(ctx,
-		`SELECT id, username, password_hash, created_at FROM users WHERE email = $1`,
-		req.Email,
-	).Scan(&userID, &username, &passwordHash, &createdAt)
-
+	if s.persistent() {
+		user, passwordHash, err = s.loginDB(req.Email)
+	} else {
+		user, passwordHash, err = s.loginMemory(req.Email)
+	}
 	if err != nil {
-		if err == pgx.ErrNoRows {
-			return nil, fmt.Errorf("invalid email or password")
-		}
-		return nil, fmt.Errorf("login failed: %w", err)
+		return nil, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(req.Password)); err != nil {
 		return nil, fmt.Errorf("invalid email or password")
-	}
-
-	user := model.User{
-		ID:        userID,
-		Username:  username,
-		CreatedAt: createdAt,
 	}
 
 	token, err := generateToken(user)
@@ -142,8 +193,49 @@ func (s *AuthService) Login(req model.LoginRequest) (*model.AuthResponse, error)
 	}, nil
 }
 
+func (s *AuthService) loginDB(email string) (model.User, string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	var user model.User
+	var passwordHash string
+
+	err := s.pool.QueryRow(ctx,
+		`SELECT id, username, password_hash, created_at FROM users WHERE email = $1`,
+		email,
+	).Scan(&user.ID, &user.Username, &passwordHash, &user.CreatedAt)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return model.User{}, "", fmt.Errorf("invalid email or password")
+		}
+		return model.User{}, "", fmt.Errorf("login failed: %w", err)
+	}
+
+	return user, passwordHash, nil
+}
+
+func (s *AuthService) loginMemory(email string) (model.User, string, error) {
+	s.mu.RLock()
+	rec, exists := s.users[email]
+	s.mu.RUnlock()
+
+	if !exists {
+		return model.User{}, "", fmt.Errorf("invalid email or password")
+	}
+
+	return rec.User, rec.PasswordHash, nil
+}
+
 // GetUser retrieves a user by ID.
 func (s *AuthService) GetUser(userID string) (*model.User, error) {
+	if s.persistent() {
+		return s.getUserDB(userID)
+	}
+	return s.getUserMemory(userID)
+}
+
+func (s *AuthService) getUserDB(userID string) (*model.User, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -161,6 +253,19 @@ func (s *AuthService) GetUser(userID string) (*model.User, error) {
 	}
 
 	return &user, nil
+}
+
+func (s *AuthService) getUserMemory(userID string) (*model.User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, rec := range s.users {
+		if rec.User.ID == userID {
+			u := rec.User
+			return &u, nil
+		}
+	}
+	return nil, fmt.Errorf("user not found")
 }
 
 func generateToken(user model.User) (string, error) {
@@ -186,7 +291,6 @@ func generateID() string {
 	return hex.EncodeToString(b)
 }
 
-// contains checks if s contains substr (simple helper to avoid importing strings).
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && searchString(s, substr)
 }

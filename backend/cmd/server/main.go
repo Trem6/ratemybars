@@ -31,37 +31,40 @@ func main() {
 		frontendURL = "http://localhost:3000"
 	}
 
-	// Connect to PostgreSQL (Supabase)
-	dbURL := os.Getenv("DATABASE_URL")
-	if dbURL == "" {
-		log.Fatal("DATABASE_URL environment variable is required")
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	dbPool, err := pgxpool.New(ctx, dbURL)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
-	defer dbPool.Close()
-
-	if err := dbPool.Ping(ctx); err != nil {
-		log.Fatalf("Failed to ping database: %v", err)
-	}
-	log.Println("Connected to PostgreSQL database")
-
 	// Initialize services
 	schoolSvc := service.NewSchoolService()
 	venueSvc := service.NewVenueService()
 	ratingSvc := service.NewRatingService()
-	authSvc := service.NewAuthService(dbPool)
 
-	// Run database migrations
-	if err := authSvc.Migrate(context.Background()); err != nil {
-		log.Fatalf("Failed to run database migrations: %v", err)
+	// Connect to PostgreSQL (Supabase) for persistent auth
+	// Falls back to in-memory auth if DATABASE_URL is not set
+	var authSvc *service.AuthService
+	dbURL := os.Getenv("DATABASE_URL")
+	if dbURL != "" {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		dbPool, err := pgxpool.New(ctx, dbURL)
+		if err != nil {
+			log.Printf("WARNING: Failed to connect to database: %v (falling back to in-memory auth)", err)
+			authSvc = service.NewAuthServiceInMemory()
+		} else if err := dbPool.Ping(ctx); err != nil {
+			log.Printf("WARNING: Failed to ping database: %v (falling back to in-memory auth)", err)
+			dbPool.Close()
+			authSvc = service.NewAuthServiceInMemory()
+		} else {
+			log.Println("Connected to PostgreSQL database")
+			authSvc = service.NewAuthService(dbPool)
+			if err := authSvc.Migrate(context.Background()); err != nil {
+				log.Fatalf("Failed to run database migrations: %v", err)
+			}
+			log.Println("Database migrations complete")
+			defer dbPool.Close()
+		}
+	} else {
+		log.Println("WARNING: DATABASE_URL not set, using in-memory auth (accounts will not persist across restarts)")
+		authSvc = service.NewAuthServiceInMemory()
 	}
-	log.Println("Database migrations complete")
 
 	// Load school data: prefer DATA_PATH env var, then local files, then embedded
 	dataPath := os.Getenv("DATA_PATH")
