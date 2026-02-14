@@ -8,59 +8,52 @@ interface TierConfig {
   label: string;
   color: string;
   glow: string;
-  bg: string;
-  border: string;
-  text: string;
+  bgColor: string;
+  borderColor: string;
 }
 
 const TIER_CONFIG: Record<Tier, TierConfig> = {
   S: {
     label: "S-Tier",
     color: "#fbbf24",
-    glow: "0 0 20px rgba(251,191,36,0.5), 0 0 40px rgba(251,191,36,0.2)",
-    bg: "bg-amber-500/15",
-    border: "border-amber-500/30",
-    text: "text-amber-400",
+    glow: "0 0 20px rgba(251,191,36,0.5), 0 0 40px rgba(251,191,36,0.25)",
+    bgColor: "rgba(251,191,36,0.15)",
+    borderColor: "rgba(251,191,36,0.4)",
   },
   A: {
     label: "A-Tier",
     color: "#a78bfa",
-    glow: "0 0 20px rgba(167,139,250,0.5), 0 0 40px rgba(167,139,250,0.2)",
-    bg: "bg-violet-500/15",
-    border: "border-violet-500/30",
-    text: "text-violet-400",
+    glow: "0 0 20px rgba(167,139,250,0.5), 0 0 40px rgba(167,139,250,0.25)",
+    bgColor: "rgba(167,139,250,0.15)",
+    borderColor: "rgba(167,139,250,0.4)",
   },
   B: {
     label: "B-Tier",
     color: "#22d3ee",
-    glow: "0 0 20px rgba(34,211,238,0.5), 0 0 40px rgba(34,211,238,0.2)",
-    bg: "bg-cyan-500/15",
-    border: "border-cyan-500/30",
-    text: "text-cyan-400",
+    glow: "0 0 20px rgba(34,211,238,0.5), 0 0 40px rgba(34,211,238,0.25)",
+    bgColor: "rgba(34,211,238,0.15)",
+    borderColor: "rgba(34,211,238,0.4)",
   },
   C: {
     label: "C-Tier",
     color: "#a1a1aa",
     glow: "0 0 12px rgba(161,161,170,0.3)",
-    bg: "bg-zinc-500/15",
-    border: "border-zinc-500/30",
-    text: "text-zinc-400",
+    bgColor: "rgba(161,161,170,0.12)",
+    borderColor: "rgba(161,161,170,0.3)",
   },
   D: {
     label: "D-Tier",
     color: "#71717a",
     glow: "none",
-    bg: "bg-zinc-700/15",
-    border: "border-zinc-700/30",
-    text: "text-zinc-500",
+    bgColor: "rgba(113,113,122,0.1)",
+    borderColor: "rgba(113,113,122,0.25)",
   },
   F: {
     label: "No Scene",
-    color: "#3f3f46",
+    color: "#52525b",
     glow: "none",
-    bg: "bg-zinc-800/15",
-    border: "border-zinc-800/30",
-    text: "text-zinc-600",
+    bgColor: "rgba(82,82,91,0.08)",
+    borderColor: "rgba(82,82,91,0.2)",
   },
 };
 
@@ -84,6 +77,12 @@ interface TierBadgeProps {
   animate?: boolean;
 }
 
+const SIZE_STYLES: Record<string, React.CSSProperties> = {
+  sm: { width: 32, height: 32, fontSize: 12, fontWeight: 700 },
+  md: { width: 48, height: 48, fontSize: 18, fontWeight: 900 },
+  lg: { width: 80, height: 80, fontSize: 30, fontWeight: 900 },
+};
+
 export default function TierBadge({
   venueCount,
   avgRating,
@@ -101,16 +100,14 @@ export default function TierBadge({
     }
   }, [animate]);
 
-  const sizeClasses = {
-    sm: "w-8 h-8 text-xs font-bold",
-    md: "w-12 h-12 text-lg font-black",
-    lg: "w-20 h-20 text-3xl font-black",
-  };
-
   return (
     <div
-      className={`relative inline-flex items-center justify-center rounded-xl border ${config.bg} ${config.border} ${config.text} ${sizeClasses[size]} transition-all duration-500`}
+      className="relative inline-flex items-center justify-center rounded-xl transition-all duration-500"
       style={{
+        ...SIZE_STYLES[size],
+        color: config.color,
+        backgroundColor: config.bgColor,
+        border: `1px solid ${config.borderColor}`,
         boxShadow: visible ? config.glow : "none",
         transform: visible ? "scale(1)" : "scale(0.5)",
         opacity: visible ? 1 : 0,
@@ -120,10 +117,10 @@ export default function TierBadge({
       {/* Pulse ring for S and A tiers */}
       {(tier === "S" || tier === "A") && visible && (
         <span
-          className="absolute inset-0 rounded-xl animate-ping opacity-20"
+          className="absolute inset-0 rounded-xl animate-ping"
           style={{
-            borderWidth: 2,
-            borderColor: config.color,
+            border: `2px solid ${config.color}`,
+            opacity: 0.2,
             animationDuration: "2s",
           }}
         />
@@ -145,7 +142,15 @@ export function TierTag({
 
   return (
     <span
-      className={`inline-flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold leading-none border ${config.bg} ${config.border} ${config.text}`}
+      className="inline-flex items-center justify-center rounded font-bold leading-none"
+      style={{
+        padding: "3px 6px",
+        fontSize: 10,
+        color: config.color,
+        backgroundColor: config.bgColor,
+        border: `1px solid ${config.borderColor}`,
+        boxShadow: tier === "S" || tier === "A" || tier === "B" ? `0 0 8px ${config.color}40` : "none",
+      }}
     >
       {tier}
     </span>

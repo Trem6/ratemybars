@@ -7,7 +7,8 @@ import { getSchool, getSchoolVenues, type School, type Venue } from "@/lib/api";
 import { useToast } from "@/lib/toast-context";
 import { SchoolPanelSkeleton } from "./Skeleton";
 import VenueCard from "./VenueCard";
-import { TierTag } from "./TierBadge";
+import TierBadge, { TierTag } from "./TierBadge";
+import PartyGauge from "./PartyGauge";
 
 interface SchoolPanelProps {
   schoolId: string;
@@ -101,6 +102,12 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
               {school.county}
             </div>
           )}
+        </div>
+
+        {/* Party Score + Tier */}
+        <div className="flex items-center gap-4 py-3 px-2">
+          <TierBadge venueCount={school.venue_count} avgRating={school.avg_rating || 0} size="md" />
+          <PartyGauge venueCount={school.venue_count} avgRating={school.avg_rating || 0} />
         </div>
 
         {/* Venues Section */}

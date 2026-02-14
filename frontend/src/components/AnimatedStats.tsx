@@ -11,7 +11,7 @@ interface CategoryStat {
   name: string;
   count: number;
   color: string;
-  gradient: string;
+  colorEnd: string;
 }
 
 function getCategoryStats(venues: Venue[]): CategoryStat[] {
@@ -21,12 +21,12 @@ function getCategoryStats(venues: Venue[]): CategoryStat[] {
     counts[cat] = (counts[cat] || 0) + 1;
   }
 
-  const configs: Record<string, { label: string; color: string; gradient: string }> = {
-    bar: { label: "Bars", color: "#4ade80", gradient: "from-green-500 to-emerald-400" },
-    nightclub: { label: "Nightclubs", color: "#a78bfa", gradient: "from-violet-500 to-purple-400" },
-    frat: { label: "Frats", color: "#fbbf24", gradient: "from-amber-500 to-yellow-400" },
-    party_host: { label: "Party Spots", color: "#fb923c", gradient: "from-orange-500 to-amber-400" },
-    other: { label: "Other", color: "#71717a", gradient: "from-zinc-500 to-zinc-400" },
+  const configs: Record<string, { label: string; color: string; colorEnd: string }> = {
+    bar: { label: "Bars", color: "#4ade80", colorEnd: "#34d399" },
+    nightclub: { label: "Nightclubs", color: "#a78bfa", colorEnd: "#c084fc" },
+    frat: { label: "Frats", color: "#fbbf24", colorEnd: "#facc15" },
+    party_host: { label: "Party Spots", color: "#fb923c", colorEnd: "#fbbf24" },
+    other: { label: "Other", color: "#71717a", colorEnd: "#a1a1aa" },
   };
 
   return Object.entries(counts)
@@ -34,18 +34,18 @@ function getCategoryStats(venues: Venue[]): CategoryStat[] {
       name: configs[cat]?.label || cat,
       count,
       color: configs[cat]?.color || "#71717a",
-      gradient: configs[cat]?.gradient || "from-zinc-500 to-zinc-400",
+      colorEnd: configs[cat]?.colorEnd || "#a1a1aa",
     }))
     .sort((a, b) => b.count - a.count);
 }
 
 function getRatingDistribution(venues: Venue[]) {
   const buckets = [
-    { label: "4.5-5.0", min: 4.5, color: "#22d3ee", gradient: "from-cyan-500 to-teal-400" },
-    { label: "3.5-4.4", min: 3.5, color: "#4ade80", gradient: "from-green-500 to-emerald-400" },
-    { label: "2.5-3.4", min: 2.5, color: "#facc15", gradient: "from-yellow-500 to-amber-400" },
-    { label: "1.5-2.4", min: 1.5, color: "#fb923c", gradient: "from-orange-500 to-amber-400" },
-    { label: "0-1.4", min: 0, color: "#ef4444", gradient: "from-red-500 to-rose-400" },
+    { label: "4.5-5.0", min: 4.5, color: "#22d3ee", colorEnd: "#2dd4bf" },
+    { label: "3.5-4.4", min: 3.5, color: "#4ade80", colorEnd: "#34d399" },
+    { label: "2.5-3.4", min: 2.5, color: "#facc15", colorEnd: "#fbbf24" },
+    { label: "1.5-2.4", min: 1.5, color: "#fb923c", colorEnd: "#fbbf24" },
+    { label: "0-1.4", min: 0, color: "#ef4444", colorEnd: "#f87171" },
   ];
 
   const ratedVenues = venues.filter((v) => v.avg_rating > 0);
@@ -67,16 +67,16 @@ function AnimatedBar({
   label,
   count,
   max,
-  gradient,
   color,
+  colorEnd,
   delay,
   visible,
 }: {
   label: string;
   count: number;
   max: number;
-  gradient: string;
   color: string;
+  colorEnd: string;
   delay: number;
   visible: boolean;
 }) {
@@ -97,10 +97,11 @@ function AnimatedBar({
           {count}
         </span>
       </div>
-      <div className="h-2.5 rounded-full bg-zinc-800/50 overflow-hidden">
+      <div className="h-2.5 rounded-full overflow-hidden" style={{ backgroundColor: "rgba(39,39,42,0.5)" }}>
         <div
-          className={`h-full rounded-full bg-gradient-to-r ${gradient}`}
+          className="h-full rounded-full"
           style={{
+            background: `linear-gradient(to right, ${color}, ${colorEnd})`,
             width: visible ? `${width}%` : "0%",
             transition: `width 800ms cubic-bezier(0.16, 1, 0.3, 1) ${delay}ms`,
             boxShadow: visible ? `0 0 8px ${color}40` : "none",
@@ -154,8 +155,8 @@ export default function AnimatedStats({ venues }: AnimatedStatsProps) {
               label={cat.name}
               count={cat.count}
               max={maxCat}
-              gradient={cat.gradient}
               color={cat.color}
+              colorEnd={cat.colorEnd}
               delay={i * 120}
               visible={visible}
             />
@@ -176,8 +177,8 @@ export default function AnimatedStats({ venues }: AnimatedStatsProps) {
                 label={bucket.label}
                 count={bucket.count}
                 max={maxRating}
-                gradient={bucket.gradient}
                 color={bucket.color}
+                colorEnd={bucket.colorEnd}
                 delay={i * 120}
                 visible={visible}
               />
