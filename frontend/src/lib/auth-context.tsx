@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { getMe, login as apiLogin, register as apiRegister, logout as apiLogout } from "./api";
+import { getMe, login as apiLogin, register as apiRegister, logout as apiLogout, setToken, clearToken, getToken } from "./api";
 
 interface User {
   id: string;
@@ -25,24 +25,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Only try to fetch user if we have a stored token
+    if (!getToken()) {
+      setLoading(false);
+      return;
+    }
     getMe()
       .then(setUser)
-      .catch(() => setUser(null))
+      .catch(() => {
+        clearToken();
+        setUser(null);
+      })
       .finally(() => setLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await apiLogin({ email, password });
+    setToken(res.token);
     setUser(res.user);
   }, []);
 
   const register = useCallback(async (email: string, password: string, username: string) => {
     const res = await apiRegister({ email, password, username });
+    setToken(res.token);
     setUser(res.user);
   }, []);
 
   const logout = useCallback(async () => {
-    await apiLogout();
+    await apiLogout().catch(() => {}); // don't fail if backend is unreachable
+    clearToken();
     setUser(null);
   }, []);
 
