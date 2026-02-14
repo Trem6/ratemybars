@@ -27,6 +27,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Sanitize user-provided strings
+	req.Email = middleware.SanitizeString(req.Email)
+	req.Username = middleware.SanitizeString(req.Username)
+	// Note: password is not sanitized — it gets hashed, never rendered
+
 	resp, err := h.svc.Register(req)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())
