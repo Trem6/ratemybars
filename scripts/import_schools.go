@@ -1,7 +1,8 @@
 // import_schools.go - Import IPEDS school data from CSV into JSON format.
 // Usage: go run scripts/import_schools.go -input path/to/hd2024.csv -output data/schools.json
 //
-// Filters for SECTOR 1 (Public 4-year) and SECTOR 2 (Private non-profit 4-year).
+// Includes: SECTOR 1 (Public 4-year), SECTOR 2 (Private non-profit 4-year),
+//           SECTOR 4 (Public 2-year), SECTOR 5 (Private non-profit 2-year).
 // When the full IPEDS dataset CSV is available, run this script to generate
 // the schools.json consumed by the backend.
 
@@ -112,7 +113,8 @@ func main() {
 		}
 
 		sector := getInt(row, "SECTOR")
-		if sector != 1 && sector != 2 {
+		// 1=Public 4yr, 2=Private nonprofit 4yr, 4=Public 2yr, 5=Private nonprofit 2yr
+		if sector != 1 && sector != 2 && sector != 4 && sector != 5 {
 			continue
 		}
 
@@ -162,20 +164,20 @@ func main() {
 		log.Fatalf("Failed to write JSON: %v", err)
 	}
 
-	publicCount := 0
-	privateCount := 0
+	fourYear := 0
+	twoYear := 0
 	for _, s := range schools {
-		if s.Control == "public" {
-			publicCount++
+		if s.ICLevel == 1 {
+			fourYear++
 		} else {
-			privateCount++
+			twoYear++
 		}
 	}
 
 	fmt.Printf("Import complete!\n")
 	fmt.Printf("  Total schools: %d\n", len(schools))
-	fmt.Printf("  Public 4-year: %d\n", publicCount)
-	fmt.Printf("  Private non-profit 4-year: %d\n", privateCount)
+	fmt.Printf("  4-year: %d\n", fourYear)
+	fmt.Printf("  2-year: %d\n", twoYear)
 	fmt.Printf("  States: %d\n", countStates(schools))
 	fmt.Printf("  Output: %s\n", *outputPath)
 }
