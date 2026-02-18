@@ -61,6 +61,7 @@ type Rating struct {
 type User struct {
 	ID               string    `json:"id"`
 	Username         string    `json:"username"`
+	Role             string    `json:"role"` // "user" or "admin"
 	DisplayName      string    `json:"display_name,omitempty"`
 	AvatarURL        string    `json:"avatar_url,omitempty"`
 	CreatedAt        time.Time `json:"created_at"`

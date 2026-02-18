@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -59,11 +60,31 @@ func (s *AuthService) Migrate(ctx context.Context) error {
 			email         TEXT UNIQUE NOT NULL,
 			username      TEXT UNIQUE NOT NULL,
 			password_hash TEXT NOT NULL,
+			role          TEXT NOT NULL DEFAULT 'user',
 			created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		);
 	`
-	_, err := s.pool.Exec(ctx, query)
-	return err
+	if _, err := s.pool.Exec(ctx, query); err != nil {
+		return err
+	}
+	// Add role column if table already existed without it
+	_, _ = s.pool.Exec(ctx, `ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user'`)
+	return nil
+}
+
+// isAdminEmail checks if the given email is in the ADMIN_EMAILS env var.
+func isAdminEmail(email string) bool {
+	adminEmails := os.Getenv("ADMIN_EMAILS")
+	if adminEmails == "" {
+		return false
+	}
+	email = strings.ToLower(strings.TrimSpace(email))
+	for _, ae := range strings.Split(adminEmails, ",") {
+		if strings.ToLower(strings.TrimSpace(ae)) == email {
+			return true
+		}
+	}
+	return false
 }
 
 // Register creates a new user account.
@@ -85,11 +106,15 @@ func (s *AuthService) Register(req model.RegisterRequest) (*model.AuthResponse, 
 
 	userID := generateID()
 	now := time.Now()
+	role := "user"
+	if isAdminEmail(req.Email) {
+		role = "admin"
+	}
 
 	if s.persistent() {
-		err = s.registerDB(userID, req.Email, req.Username, string(hash), now)
+		err = s.registerDB(userID, req.Email, req.Username, string(hash), role, now)
 	} else {
-		err = s.registerMemory(userID, req.Email, req.Username, string(hash), now)
+		err = s.registerMemory(userID, req.Email, req.Username, string(hash), role, now)
 	}
 	if err != nil {
 		return nil, err
@@ -98,6 +123,7 @@ func (s *AuthService) Register(req model.RegisterRequest) (*model.AuthResponse, 
 	user := model.User{
 		ID:        userID,
 		Username:  req.Username,
+		Role:      role,
 		CreatedAt: now,
 	}
 
@@ -112,14 +138,14 @@ func (s *AuthService) Register(req model.RegisterRequest) (*model.AuthResponse, 
 	}, nil
 }
 
-func (s *AuthService) registerDB(id, email, username, hash string, now time.Time) error {
+func (s *AuthService) registerDB(id, email, username, hash, role string, now time.Time) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	_, err := s.pool.Exec(ctx,
-		`INSERT INTO users (id, email, username, password_hash, created_at)
-		 VALUES ($1, $2, $3, $4, $5)`,
-		id, email, username, hash, now,
+		`INSERT INTO users (id, email, username, password_hash, role, created_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)`,
+		id, email, username, hash, role, now,
 	)
 	if err != nil {
 		errMsg := err.Error()
@@ -134,7 +160,7 @@ func (s *AuthService) registerDB(id, email, username, hash string, now time.Time
 	return nil
 }
 
-func (s *AuthService) registerMemory(id, email, username, hash string, now time.Time) error {
+func (s *AuthService) registerMemory(id, email, username, hash, role string, now time.Time) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -151,6 +177,7 @@ func (s *AuthService) registerMemory(id, email, username, hash string, now time.
 		User: model.User{
 			ID:        id,
 			Username:  username,
+			Role:      role,
 			CreatedAt: now,
 		},
 		Email:        email,
@@ -201,15 +228,21 @@ func (s *AuthService) loginDB(email string) (model.User, string, error) {
 	var passwordHash string
 
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, username, password_hash, created_at FROM users WHERE email = $1`,
+		`SELECT id, username, role, password_hash, created_at FROM users WHERE email = $1`,
 		email,
-	).Scan(&user.ID, &user.Username, &passwordHash, &user.CreatedAt)
+	).Scan(&user.ID, &user.Username, &user.Role, &passwordHash, &user.CreatedAt)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return model.User{}, "", fmt.Errorf("invalid email or password")
 		}
 		return model.User{}, "", fmt.Errorf("login failed: %w", err)
+	}
+
+	// If ADMIN_EMAILS changed, update role dynamically
+	if isAdminEmail(email) && user.Role != "admin" {
+		user.Role = "admin"
+		s.pool.Exec(ctx, `UPDATE users SET role = 'admin' WHERE id = $1`, user.ID)
 	}
 
 	return user, passwordHash, nil
@@ -222,6 +255,11 @@ func (s *AuthService) loginMemory(email string) (model.User, string, error) {
 
 	if !exists {
 		return model.User{}, "", fmt.Errorf("invalid email or password")
+	}
+
+	// Dynamically update role if ADMIN_EMAILS changed
+	if isAdminEmail(email) && rec.User.Role != "admin" {
+		rec.User.Role = "admin"
 	}
 
 	return rec.User, rec.PasswordHash, nil
@@ -241,9 +279,9 @@ func (s *AuthService) getUserDB(userID string) (*model.User, error) {
 
 	var user model.User
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, username, created_at FROM users WHERE id = $1`,
+		`SELECT id, username, role, created_at FROM users WHERE id = $1`,
 		userID,
-	).Scan(&user.ID, &user.Username, &user.CreatedAt)
+	).Scan(&user.ID, &user.Username, &user.Role, &user.CreatedAt)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -268,15 +306,115 @@ func (s *AuthService) getUserMemory(userID string) (*model.User, error) {
 	return nil, fmt.Errorf("user not found")
 }
 
+// UserInfo is a summary of a user for the admin panel (includes email).
+type UserInfo struct {
+	ID        string    `json:"id"`
+	Email     string    `json:"email"`
+	Username  string    `json:"username"`
+	Role      string    `json:"role"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+// ListUsers returns all users (admin only).
+func (s *AuthService) ListUsers() ([]UserInfo, error) {
+	if s.persistent() {
+		return s.listUsersDB()
+	}
+	return s.listUsersMemory(), nil
+}
+
+func (s *AuthService) listUsersDB() ([]UserInfo, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	rows, err := s.pool.Query(ctx,
+		`SELECT id, email, username, role, created_at FROM users ORDER BY created_at DESC`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list users: %w", err)
+	}
+	defer rows.Close()
+
+	var users []UserInfo
+	for rows.Next() {
+		var u UserInfo
+		if err := rows.Scan(&u.ID, &u.Email, &u.Username, &u.Role, &u.CreatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan user: %w", err)
+		}
+		users = append(users, u)
+	}
+	return users, nil
+}
+
+func (s *AuthService) listUsersMemory() []UserInfo {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var users []UserInfo
+	for _, rec := range s.users {
+		users = append(users, UserInfo{
+			ID:        rec.User.ID,
+			Email:     rec.Email,
+			Username:  rec.User.Username,
+			Role:      rec.User.Role,
+			CreatedAt: rec.User.CreatedAt,
+		})
+	}
+	return users
+}
+
+// UpdateUserRole changes a user's role. Returns an error if the user is not found.
+func (s *AuthService) UpdateUserRole(userID, role string) error {
+	if role != "user" && role != "admin" {
+		return fmt.Errorf("invalid role: must be 'user' or 'admin'")
+	}
+	if s.persistent() {
+		return s.updateUserRoleDB(userID, role)
+	}
+	return s.updateUserRoleMemory(userID, role)
+}
+
+func (s *AuthService) updateUserRoleDB(userID, role string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	tag, err := s.pool.Exec(ctx, `UPDATE users SET role = $1 WHERE id = $2`, role, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update role: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("user not found")
+	}
+	return nil
+}
+
+func (s *AuthService) updateUserRoleMemory(userID, role string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, rec := range s.users {
+		if rec.User.ID == userID {
+			rec.User.Role = role
+			return nil
+		}
+	}
+	return fmt.Errorf("user not found")
+}
+
 func generateToken(user model.User) (string, error) {
 	signingKey := os.Getenv("AUTH_SIGNING_KEY")
 	if signingKey == "" {
 		signingKey = "dev-signing-key-change-in-production"
 	}
 
+	role := user.Role
+	if role == "" {
+		role = "user"
+	}
+
 	claims := jwt.MapClaims{
 		"sub":      user.ID,
 		"username": user.Username,
+		"role":     role,
 		"iat":      time.Now().Unix(),
 		"exp":      time.Now().Add(24 * time.Hour).Unix(),
 	}

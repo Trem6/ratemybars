@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/ratemybars/backend/internal/middleware"
 	"github.com/ratemybars/backend/internal/model"
 	"github.com/ratemybars/backend/internal/service"
@@ -90,6 +91,43 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, user)
+}
+
+// ListUsers handles GET /api/admin/users (admin only)
+func (h *AuthHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.svc.ListUsers()
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, users)
+}
+
+// UpdateUserRole handles PUT /api/admin/users/{id}/role (admin only)
+func (h *AuthHandler) UpdateUserRole(w http.ResponseWriter, r *http.Request) {
+	userID := chi.URLParam(r, "id")
+
+	// Prevent admin from demoting themselves
+	currentUserID := middleware.GetUserID(r.Context())
+	if userID == currentUserID {
+		writeError(w, http.StatusBadRequest, "You cannot change your own role")
+		return
+	}
+
+	var body struct {
+		Role string `json:"role"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if err := h.svc.UpdateUserRole(userID, body.Role); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"message": "role updated"})
 }
 
 func setAuthCookie(w http.ResponseWriter, token string) {

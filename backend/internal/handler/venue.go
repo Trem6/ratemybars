@@ -64,3 +64,29 @@ func (h *VenueHandler) ListBySchool(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, result)
 }
+
+// ListPending handles GET /api/admin/venues/pending (admin only)
+func (h *VenueHandler) ListPending(w http.ResponseWriter, r *http.Request) {
+	pending := h.svc.ListPending()
+	writeJSON(w, http.StatusOK, pending)
+}
+
+// Approve handles POST /api/admin/venues/{id}/approve (admin only)
+func (h *VenueHandler) Approve(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := h.svc.ApproveVenue(id); err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "venue approved"})
+}
+
+// Reject handles DELETE /api/admin/venues/{id}/reject (admin only)
+func (h *VenueHandler) Reject(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := h.svc.RejectVenue(id); err != nil {
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "venue rejected"})
+}

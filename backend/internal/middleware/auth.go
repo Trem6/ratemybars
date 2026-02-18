@@ -14,6 +14,7 @@ type contextKey string
 const (
 	UserIDKey   contextKey = "user_id"
 	UserNameKey contextKey = "username"
+	UserRoleKey contextKey = "user_role"
 )
 
 // AuthRequired is a middleware that checks for a valid JWT in the Authorization header or cookie.
@@ -50,11 +51,29 @@ func AuthRequired(next http.Handler) http.Handler {
 
 		userID, _ := claims["sub"].(string)
 		username, _ := claims["username"].(string)
+		role, _ := claims["role"].(string)
+		if role == "" {
+			role = "user"
+		}
 
 		ctx := context.WithValue(r.Context(), UserIDKey, userID)
 		ctx = context.WithValue(ctx, UserNameKey, username)
+		ctx = context.WithValue(ctx, UserRoleKey, role)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+// AdminRequired is a middleware that requires the user to have the "admin" role.
+// Must be used after AuthRequired.
+func AdminRequired(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		role := GetUserRole(r.Context())
+		if role != "admin" {
+			http.Error(w, `{"error":"forbidden","message":"Admin access required"}`, http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
 	})
 }
 
@@ -84,8 +103,13 @@ func OptionalAuth(next http.Handler) http.Handler {
 			if ok {
 				userID, _ := claims["sub"].(string)
 				username, _ := claims["username"].(string)
+				role, _ := claims["role"].(string)
+				if role == "" {
+					role = "user"
+				}
 				ctx := context.WithValue(r.Context(), UserIDKey, userID)
 				ctx = context.WithValue(ctx, UserNameKey, username)
+				ctx = context.WithValue(ctx, UserRoleKey, role)
 				r = r.WithContext(ctx)
 			}
 		}
@@ -127,4 +151,12 @@ func GetUsername(ctx context.Context) string {
 		return v
 	}
 	return ""
+}
+
+// GetUserRole extracts user role from context.
+func GetUserRole(ctx context.Context) string {
+	if v, ok := ctx.Value(UserRoleKey).(string); ok {
+		return v
+	}
+	return "user"
 }

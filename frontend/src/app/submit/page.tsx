@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Send, Search } from "lucide-react";
+import { ArrowLeft, Send, Search, Clock, CheckCircle } from "lucide-react";
 import { createVenue, searchSchools, type School } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -22,6 +22,7 @@ function SubmitForm() {
   const [selectedSchoolName, setSelectedSchoolName] = useState("");
   const [showSchoolSearch, setShowSchoolSearch] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState<{ approved: boolean; id: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Search schools
@@ -56,6 +57,41 @@ function SubmitForm() {
     );
   }
 
+  if (success) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-16 text-center">
+        {success.approved ? (
+          <>
+            <CheckCircle size={48} className="text-emerald-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-white mb-2">Venue Added!</h1>
+            <p className="text-zinc-400 mb-6">Your venue has been published.</p>
+            <Link
+              href={`/venue/${success.id}`}
+              className="inline-flex px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-colors"
+            >
+              View Venue
+            </Link>
+          </>
+        ) : (
+          <>
+            <Clock size={48} className="text-amber-400 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-white mb-2">Submitted for Review</h1>
+            <p className="text-zinc-400 mb-6">
+              Your venue has been submitted and is waiting for admin approval.
+              You&apos;ll see it on the site once it&apos;s been reviewed.
+            </p>
+            <Link
+              href="/"
+              className="inline-flex px-6 py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-xl transition-colors"
+            >
+              Back to Map
+            </Link>
+          </>
+        )}
+      </div>
+    );
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -74,7 +110,11 @@ function SubmitForm() {
         address,
         school_id: schoolId,
       });
-      router.push(`/venue/${venue.id}`);
+      if (venue.verified) {
+        router.push(`/venue/${venue.id}`);
+      } else {
+        setSuccess({ approved: false, id: venue.id });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit venue");
     } finally {

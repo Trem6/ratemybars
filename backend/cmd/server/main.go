@@ -239,6 +239,20 @@ func main() {
 			r.Post("/venues", venueHandler.Create)
 			r.Post("/ratings", ratingHandler.Create)
 		})
+
+		// Admin routes (auth + admin role required)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.AuthRequired)
+			r.Use(middleware.AdminRequired)
+			r.Use(middleware.StrictRateLimit())
+
+			r.Get("/admin/venues/pending", venueHandler.ListPending)
+			r.Post("/admin/venues/{id}/approve", venueHandler.Approve)
+			r.Delete("/admin/venues/{id}/reject", venueHandler.Reject)
+
+			r.Get("/admin/users", authHandler.ListUsers)
+			r.Put("/admin/users/{id}/role", authHandler.UpdateUserRole)
+		})
 	})
 
 	log.Printf("RateMyBars API starting on :%s", port)

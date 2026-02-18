@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { LogIn, LogOut, Plus, User } from "lucide-react";
+import { LogIn, LogOut, Plus, User, Shield } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+
+  const isAdmin = user?.role === "admin";
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/70 backdrop-blur-2xl border-b border-zinc-700/30 shadow-lg shadow-black/20">
@@ -24,6 +26,15 @@ export default function Navbar() {
         <div className="flex items-center gap-3">
           {user ? (
             <>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 text-sm font-medium transition-colors border border-amber-600/30"
+                >
+                  <Shield size={14} />
+                  <span className="hidden sm:inline">Admin</span>
+                </Link>
+              )}
               <Link
                 href="/submit"
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition-colors"

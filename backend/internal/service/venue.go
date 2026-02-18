@@ -12,8 +12,6 @@ import (
 )
 
 // VenueService manages venue CRUD operations.
-// In production, this would be backed by Gel database queries.
-// For now, uses in-memory storage as a working prototype.
 type VenueService struct {
 	mu     sync.RWMutex
 	venues []model.Venue
@@ -27,14 +25,13 @@ func NewVenueService() *VenueService {
 	}
 }
 
-// Create adds a new venue.
+// Create adds a new venue. Admin submissions are auto-approved.
 func (s *VenueService) Create(ctx context.Context, req model.CreateVenueRequest) (*model.Venue, error) {
 	userID := middleware.GetUserID(ctx)
 	if userID == "" {
 		return nil, fmt.Errorf("authentication required")
 	}
 
-	// Validate category
 	validCategories := map[string]bool{
 		"bar": true, "nightclub": true, "frat": true, "party_host": true, "other": true,
 	}
@@ -48,6 +45,9 @@ func (s *VenueService) Create(ctx context.Context, req model.CreateVenueRequest)
 	if req.SchoolID == "" {
 		return nil, fmt.Errorf("school_id is required")
 	}
+
+	role := middleware.GetUserRole(ctx)
+	approved := role == "admin"
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -63,7 +63,7 @@ func (s *VenueService) Create(ctx context.Context, req model.CreateVenueRequest)
 		SchoolID:    req.SchoolID,
 		CreatedByID: userID,
 		CreatedAt:   time.Now(),
-		Verified:    false,
+		Verified:    approved,
 	}
 	s.nextID++
 	s.venues = append(s.venues, venue)
@@ -84,7 +84,7 @@ func (s *VenueService) GetByID(_ context.Context, id string) (*model.Venue, erro
 	return nil, fmt.Errorf("venue not found: %s", id)
 }
 
-// ListBySchool returns all venues for a school.
+// ListBySchool returns approved venues for a school (public view).
 func (s *VenueService) ListBySchool(_ context.Context, schoolID string, page, limit int) (*model.PaginatedResponse, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -98,7 +98,7 @@ func (s *VenueService) ListBySchool(_ context.Context, schoolID string, page, li
 
 	var filtered []model.Venue
 	for _, v := range s.venues {
-		if v.SchoolID == schoolID {
+		if v.SchoolID == schoolID && v.Verified {
 			filtered = append(filtered, v)
 		}
 	}
@@ -123,11 +123,62 @@ func (s *VenueService) ListBySchool(_ context.Context, schoolID string, page, li
 	}, nil
 }
 
-// Count returns the total number of venues.
+// ListPending returns all venues that are not yet approved.
+func (s *VenueService) ListPending() []model.Venue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var pending []model.Venue
+	for _, v := range s.venues {
+		if !v.Verified {
+			pending = append(pending, v)
+		}
+	}
+	return pending
+}
+
+// ApproveVenue marks a venue as approved.
+func (s *VenueService) ApproveVenue(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.venues {
+		if s.venues[i].ID == id {
+			s.venues[i].Verified = true
+			return nil
+		}
+	}
+	return fmt.Errorf("venue not found: %s", id)
+}
+
+// RejectVenue removes a pending venue.
+func (s *VenueService) RejectVenue(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.venues {
+		if s.venues[i].ID == id {
+			if s.venues[i].Verified {
+				return fmt.Errorf("cannot reject an already approved venue")
+			}
+			s.venues = append(s.venues[:i], s.venues[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("venue not found: %s", id)
+}
+
+// Count returns the total number of approved venues.
 func (s *VenueService) Count() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return len(s.venues)
+	count := 0
+	for _, v := range s.venues {
+		if v.Verified {
+			count++
+		}
+	}
+	return count
 }
 
 // LoadSeedData populates the venue service with seed data.
@@ -154,7 +205,7 @@ func (s *VenueService) LoadSeedData(seeds []struct {
 			Longitude:   seed.Longitude,
 			SchoolID:    seed.SchoolID,
 			CreatedByID: "system",
-			CreatedAt:   time.Now().Add(-time.Duration(s.nextID) * 24 * time.Hour), // stagger dates
+			CreatedAt:   time.Now().Add(-time.Duration(s.nextID) * 24 * time.Hour),
 			Verified:    true,
 		}
 		s.nextID++
@@ -162,12 +213,16 @@ func (s *VenueService) LoadSeedData(seeds []struct {
 	}
 }
 
-// GetAllVenues returns all venues (for computing counts).
+// GetAllVenues returns all approved venues (for computing counts).
 func (s *VenueService) GetAllVenues() []model.Venue {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	out := make([]model.Venue, len(s.venues))
-	copy(out, s.venues)
+	var out []model.Venue
+	for _, v := range s.venues {
+		if v.Verified {
+			out = append(out, v)
+		}
+	}
 	return out
 }
 

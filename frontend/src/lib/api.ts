@@ -131,6 +131,7 @@ export interface AuthResponse {
   user: {
     id: string;
     username: string;
+    role: string;
     display_name?: string;
     avatar_url?: string;
   };
@@ -218,3 +219,30 @@ export const logout = () =>
 
 export const getMe = () =>
   apiFetch<AuthResponse["user"]>("/api/auth/me");
+
+// Admin
+export interface AdminUser {
+  id: string;
+  email: string;
+  username: string;
+  role: string;
+  created_at: string;
+}
+
+export const getPendingVenues = () =>
+  apiFetch<Venue[]>("/api/admin/venues/pending");
+
+export const approveVenue = (id: string) =>
+  apiFetch<{ message: string }>(`/api/admin/venues/${id}/approve`, { method: "POST" });
+
+export const rejectVenue = (id: string) =>
+  apiFetch<{ message: string }>(`/api/admin/venues/${id}/reject`, { method: "DELETE" });
+
+export const getAdminUsers = () =>
+  apiFetch<AdminUser[]>("/api/admin/users");
+
+export const updateUserRole = (id: string, role: string) =>
+  apiFetch<{ message: string }>(`/api/admin/users/${id}/role`, {
+    method: "PUT",
+    body: JSON.stringify({ role }),
+  });

@@ -6,6 +6,7 @@ import { getMe, login as apiLogin, register as apiRegister, logout as apiLogout,
 interface User {
   id: string;
   username: string;
+  role: string;
   display_name?: string;
   avatar_url?: string;
 }
