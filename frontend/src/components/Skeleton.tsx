@@ -15,7 +15,7 @@ export function Skeleton({ className = "" }: SkeletonProps) {
 /** Skeleton layout matching the SchoolPanel loading state */
 export function SchoolPanelSkeleton() {
   return (
-    <div className="fixed right-0 top-14 bottom-0 w-full sm:w-[420px] bg-zinc-950/90 backdrop-blur-2xl border-l border-zinc-700/30 z-40 animate-slide-in">
+    <div className="fixed right-0 top-14 bottom-0 w-full sm:w-[480px] bg-zinc-950/90 backdrop-blur-2xl border-l border-zinc-700/30 z-40 animate-slide-in">
       {/* Header skeleton */}
       <div className="border-b border-zinc-700/30 px-5 py-4">
         <Skeleton className="h-5 w-3/4 mb-3" />

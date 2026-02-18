@@ -57,7 +57,7 @@ export default function Home() {
       </div>
 
       {/* Explore Panel */}
-      <div className="absolute top-20 left-4 z-30 hidden sm:block">
+      <div className="absolute top-[4.5rem] left-4 z-30 hidden sm:block">
         <ExplorePanel onSchoolSelect={handleSchoolSelect} />
       </div>
 

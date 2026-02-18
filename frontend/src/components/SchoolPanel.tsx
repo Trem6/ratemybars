@@ -47,7 +47,7 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
   if (!school) return null;
 
   return (
-    <div className="fixed right-0 top-14 bottom-0 w-full sm:w-[420px] bg-zinc-950/90 backdrop-blur-2xl border-l border-zinc-700/30 z-40 overflow-y-auto animate-slide-in">
+    <div className="fixed right-0 top-14 bottom-0 w-full sm:w-[480px] bg-zinc-950/90 backdrop-blur-2xl border-l border-zinc-700/30 z-40 overflow-y-auto animate-slide-in">
       {/* Header */}
       <div className="sticky top-0 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-700/30 px-5 py-4 z-10">
         <div className="flex items-start justify-between gap-3">

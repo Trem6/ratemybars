@@ -95,10 +95,10 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
   };
 
   return (
-    <div className="relative w-full max-w-lg" ref={dropdownRef}>
+    <div className="relative w-full max-w-2xl" ref={dropdownRef}>
       {/* Search Input */}
       <div className="relative flex items-center">
-        <Search size={18} className="absolute left-3 text-zinc-500" />
+        <Search size={20} className="absolute left-4 text-zinc-500" />
         <input
           ref={inputRef}
           type="text"
@@ -106,9 +106,9 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => results.length > 0 && setShowResults(true)}
           placeholder="Search schools by name or city..."
-          className="w-full pl-10 pr-20 py-2.5 bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/30 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-violet-500/40 focus:ring-2 focus:ring-violet-500/20 focus:shadow-lg focus:shadow-violet-500/5 transition-all"
+          className="w-full pl-12 pr-24 py-3.5 bg-zinc-900/70 backdrop-blur-xl border border-zinc-700/30 rounded-2xl text-white placeholder-zinc-500 text-base focus:outline-none focus:border-violet-500/40 focus:ring-2 focus:ring-violet-500/20 focus:shadow-lg focus:shadow-violet-500/5 transition-all"
         />
-        <div className="absolute right-2 flex items-center gap-1">
+        <div className="absolute right-3 flex items-center gap-1.5">
           {query && (
             <button
               onClick={() => {
@@ -116,27 +116,27 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
                 setResults([]);
                 inputRef.current?.focus();
               }}
-              className="p-1 rounded-md hover:bg-zinc-800 text-zinc-500 hover:text-white transition-colors"
+              className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-white transition-colors"
             >
-              <X size={14} />
+              <X size={16} />
             </button>
           )}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`p-1.5 rounded-md transition-colors ${
+            className={`p-2 rounded-lg transition-colors ${
               showFilters || state || control || showTwoYear
                 ? "bg-violet-600/20 text-violet-400"
                 : "hover:bg-zinc-800 text-zinc-500 hover:text-white"
             }`}
           >
-            <Filter size={16} />
+            <Filter size={18} />
           </button>
         </div>
       </div>
 
       {/* Filter Panel */}
       {showFilters && (
-        <div className="absolute top-full left-0 right-0 mt-2 p-4 bg-zinc-900/80 backdrop-blur-xl border border-zinc-700/30 rounded-xl shadow-2xl z-50">
+        <div className="absolute top-full left-0 right-0 mt-2.5 p-5 bg-zinc-900/90 backdrop-blur-xl border border-zinc-700/30 rounded-2xl shadow-2xl z-50">
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-zinc-400 mb-1">State</label>
@@ -200,31 +200,30 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
 
       {/* Results Dropdown */}
       {showResults && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/80 backdrop-blur-xl border border-zinc-700/30 rounded-xl shadow-2xl overflow-hidden z-50 max-h-80 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-2.5 bg-zinc-900/90 backdrop-blur-xl border border-zinc-700/30 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto">
           {results.map((school) => (
             <button
               key={school.id}
               onClick={() => handleSelect(school)}
-              className="w-full px-4 py-3 text-left hover:bg-zinc-800/80 transition-colors border-b border-zinc-800/50 last:border-0"
+              className="w-full px-5 py-3.5 text-left hover:bg-zinc-800/80 transition-colors border-b border-zinc-800/40 last:border-0"
             >
-              <div className="text-white text-sm font-medium">{school.name}</div>
-              <div className="text-zinc-400 text-xs mt-0.5">
+              <div className="text-white text-[15px] font-medium">{school.name}</div>
+              <div className="text-zinc-400 text-sm mt-0.5">
                 {school.city}, {school.state} &middot;{" "}
                 <span className={school.control === "public" ? "text-emerald-400" : "text-blue-400"}>
                   {school.control === "public" ? "Public" : "Private"}
                 </span>
-
               </div>
             </button>
           ))}
           {loading && (
-            <div className="px-4 py-3 text-zinc-500 text-sm text-center">Searching...</div>
+            <div className="px-5 py-3.5 text-zinc-500 text-sm text-center">Searching...</div>
           )}
         </div>
       )}
 
       {showResults && query.length >= 2 && results.length === 0 && !loading && (
-        <div className="absolute top-full left-0 right-0 mt-2 bg-zinc-900/80 backdrop-blur-xl border border-zinc-700/30 rounded-xl shadow-2xl p-4 z-50">
+        <div className="absolute top-full left-0 right-0 mt-2.5 bg-zinc-900/90 backdrop-blur-xl border border-zinc-700/30 rounded-2xl shadow-2xl p-5 z-50">
           <p className="text-zinc-500 text-sm text-center">No schools found</p>
         </div>
       )}
