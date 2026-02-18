@@ -62,27 +62,27 @@ export default function Home() {
       </div>
 
       {/* Activity Ticker */}
-      <div className="absolute bottom-24 left-0 right-0 z-30 hidden sm:block">
+      <div className="absolute bottom-20 left-0 right-0 z-30 hidden sm:block">
         <div className="bg-zinc-950/60 backdrop-blur-xl border-y border-zinc-700/20">
           <ActivityTicker />
         </div>
       </div>
 
       {/* Stats Bar */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-30 hidden sm:block">
+      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 hidden sm:block">
         <StatsBar />
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-6 left-4 z-30 bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/30 rounded-xl p-3 hidden sm:block shadow-2xl">
-        <div className="flex flex-col gap-1.5 text-xs">
+      <div className="absolute bottom-6 left-4 z-30 bg-zinc-900/70 backdrop-blur-xl border border-zinc-700/30 rounded-xl px-3.5 py-2.5 hidden sm:block shadow-2xl">
+        <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#00ffaa", boxShadow: "0 0 4px #00ffaa" }} />
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#00ffaa", boxShadow: "0 0 6px #00ffaa" }} />
             <span className="text-zinc-400">Public</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#bf5fff", boxShadow: "0 0 4px #bf5fff" }} />
-            <span className="text-zinc-400">Private Non-Profit</span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#bf5fff", boxShadow: "0 0 6px #bf5fff" }} />
+            <span className="text-zinc-400">Private</span>
           </div>
         </div>
       </div>

@@ -81,7 +81,7 @@ export default function PartyGauge({ venueCount, avgRating }: PartyGaugeProps) {
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-36 h-36">
+      <div className="relative w-32 h-32">
         <svg
           viewBox="0 0 100 100"
           className="w-full h-full -rotate-[225deg]"
@@ -92,8 +92,8 @@ export default function PartyGauge({ venueCount, avgRating }: PartyGaugeProps) {
             cy="50"
             r={radius}
             fill="none"
-            stroke="rgba(63,63,70,0.3)"
-            strokeWidth="8"
+            stroke="rgba(63,63,70,0.25)"
+            strokeWidth="7"
             strokeDasharray={`${arcLength} ${circumference}`}
             strokeLinecap="round"
           />
@@ -104,7 +104,7 @@ export default function PartyGauge({ venueCount, avgRating }: PartyGaugeProps) {
             r={radius}
             fill="none"
             stroke={color}
-            strokeWidth="8"
+            strokeWidth="7"
             strokeDasharray={`${arcLength} ${circumference}`}
             strokeDashoffset={dashOffset}
             strokeLinecap="round"
@@ -117,18 +117,18 @@ export default function PartyGauge({ venueCount, avgRating }: PartyGaugeProps) {
         {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
-            className="text-3xl font-black tabular-nums"
+            className="text-3xl font-black tabular-nums leading-none"
             style={{ color }}
           >
             {animatedScore}
           </span>
-          <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">
+          <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-widest mt-1">
             Party Score
           </span>
         </div>
       </div>
       <span
-        className="text-xs font-bold mt-1 uppercase tracking-wider"
+        className="text-xs font-bold uppercase tracking-wider -mt-1"
         style={{ color }}
       >
         {label}

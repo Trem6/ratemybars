@@ -15,26 +15,38 @@ export function Skeleton({ className = "" }: SkeletonProps) {
 /** Skeleton layout matching the SchoolPanel loading state */
 export function SchoolPanelSkeleton() {
   return (
-    <div className="fixed right-0 top-14 bottom-0 w-full sm:w-96 bg-zinc-950/80 backdrop-blur-2xl border-l border-zinc-700/30 z-40 animate-slide-in">
+    <div className="fixed right-0 top-14 bottom-0 w-full sm:w-[420px] bg-zinc-950/90 backdrop-blur-2xl border-l border-zinc-700/30 z-40 animate-slide-in">
       {/* Header skeleton */}
-      <div className="border-b border-zinc-700/30 p-4">
-        <Skeleton className="h-5 w-3/4 mb-2" />
-        <Skeleton className="h-4 w-20" />
+      <div className="border-b border-zinc-700/30 px-5 py-4">
+        <Skeleton className="h-5 w-3/4 mb-3" />
+        <div className="flex gap-2">
+          <Skeleton className="h-6 w-16 rounded-full" />
+          <Skeleton className="h-6 w-8 rounded" />
+        </div>
       </div>
 
       {/* Details skeleton */}
-      <div className="p-4 space-y-4">
+      <div className="px-5 py-5 space-y-5">
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Skeleton className="w-4 h-4 rounded-full shrink-0" />
             <Skeleton className="h-3 w-full" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <Skeleton className="w-4 h-4 rounded-full shrink-0" />
             <Skeleton className="h-3 w-2/3" />
           </div>
-          <Skeleton className="h-3 w-1/3" />
         </div>
+
+        {/* Gauge skeleton */}
+        <div className="flex flex-col items-center py-4 bg-zinc-900/40 rounded-2xl border border-zinc-800/40">
+          <Skeleton className="w-32 h-32 rounded-full" />
+          <Skeleton className="h-5 w-8 rounded mt-3" />
+        </div>
+
+        <Skeleton className="h-11 w-full rounded-xl" />
+
+        <div className="h-px bg-zinc-800/60" />
 
         {/* Venues skeleton */}
         <div>
@@ -44,10 +56,7 @@ export function SchoolPanelSkeleton() {
           </div>
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="p-3 bg-zinc-900/60 border border-zinc-700/30 rounded-xl"
-              >
+              <div key={i} className="p-3 bg-zinc-900/60 border border-zinc-700/30 rounded-xl">
                 <div className="flex items-center gap-2 mb-2">
                   <Skeleton className="h-4 w-16" />
                 </div>

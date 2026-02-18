@@ -47,20 +47,20 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
   if (!school) return null;
 
   return (
-    <div className="fixed right-0 top-14 bottom-0 w-full sm:w-96 bg-zinc-950/80 backdrop-blur-2xl border-l border-zinc-700/30 z-40 overflow-y-auto animate-slide-in">
+    <div className="fixed right-0 top-14 bottom-0 w-full sm:w-[420px] bg-zinc-950/90 backdrop-blur-2xl border-l border-zinc-700/30 z-40 overflow-y-auto animate-slide-in">
       {/* Header */}
-      <div className="sticky top-0 bg-zinc-950/70 backdrop-blur-xl border-b border-zinc-700/30 p-4">
-        <div className="flex items-start justify-between">
+      <div className="sticky top-0 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-700/30 px-5 py-4 z-10">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <Link href={`/school/${schoolId}`} className="text-lg font-bold text-white truncate block hover:text-violet-300 transition-colors">
+            <Link href={`/school/${schoolId}`} className="text-lg font-bold text-white hover:text-violet-300 transition-colors line-clamp-2 leading-tight">
               {school.name}
             </Link>
-            <div className="flex items-center gap-2 mt-1">
+            <div className="flex items-center gap-2 mt-2">
               <span
-                className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${
+                className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
                   school.control === "public"
-                    ? "bg-emerald-500/10 text-emerald-400"
-                    : "bg-blue-500/10 text-blue-400"
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    : "bg-blue-500/10 text-blue-400 border border-blue-500/20"
                 }`}
               >
                 {school.control === "public" ? "Public" : "Private"}
@@ -70,25 +70,23 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors ml-2"
+            className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors shrink-0 -mr-1 -mt-1"
           >
-            <X size={20} />
+            <X size={18} />
           </button>
         </div>
       </div>
 
-      {/* Details */}
-      <div className="p-4 space-y-4">
-        <div className="space-y-2">
-          <div className="flex items-start gap-2 text-sm text-zinc-400">
-            <MapPin size={16} className="mt-0.5 shrink-0" />
-            <span>
-              {school.address}, {school.city}, {school.state} {school.zip}
-            </span>
+      <div className="px-5 py-5 space-y-5">
+        {/* Details */}
+        <div className="space-y-2.5">
+          <div className="flex items-start gap-2.5 text-sm text-zinc-400">
+            <MapPin size={15} className="mt-0.5 shrink-0 text-zinc-500" />
+            <span>{school.address}, {school.city}, {school.state} {school.zip}</span>
           </div>
           {school.website && (
-            <div className="flex items-center gap-2 text-sm">
-              <Globe size={16} className="text-zinc-400 shrink-0" />
+            <div className="flex items-center gap-2.5 text-sm">
+              <Globe size={15} className="text-zinc-500 shrink-0" />
               <a
                 href={school.website.startsWith("http") ? school.website : `https://${school.website}`}
                 target="_blank"
@@ -100,26 +98,27 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
             </div>
           )}
           {school.county && (
-            <div className="text-sm text-zinc-500">
-              {school.county}
-            </div>
+            <p className="text-xs text-zinc-500 ml-[27px]">{school.county}</p>
           )}
         </div>
 
-        {/* Party Score + Tier */}
-        <div className="flex items-center gap-4 py-3 px-2">
-          <TierBadge venueCount={school.venue_count} avgRating={school.avg_rating || 0} size="md" />
+        {/* Party Score + Tier — centered */}
+        <div className="flex flex-col items-center gap-3 py-4 bg-zinc-900/40 rounded-2xl border border-zinc-800/40">
           <PartyGauge venueCount={school.venue_count} avgRating={school.avg_rating || 0} />
+          <TierBadge venueCount={school.venue_count} avgRating={school.avg_rating || 0} size="sm" />
         </div>
 
         {/* View Full Page Link */}
         <Link
           href={`/school/${schoolId}`}
-          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-medium text-violet-400 hover:text-white border border-zinc-700/30 hover:border-violet-500/30 hover:bg-violet-500/10 transition-all"
+          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold text-violet-400 hover:text-white border border-zinc-700/30 hover:border-violet-500/40 hover:bg-violet-500/10 transition-all"
         >
           <ExternalLink size={14} />
           View Full Page
         </Link>
+
+        {/* Divider */}
+        <div className="h-px bg-zinc-800/60" />
 
         {/* Venues Section */}
         <div>
@@ -127,26 +126,26 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
             <h3 className="text-sm font-semibold text-white">
               Venues & Parties
               {venues.length > 0 && (
-                <span className="text-zinc-500 font-normal ml-1">({venues.length})</span>
+                <span className="text-zinc-500 font-normal ml-1.5">({venues.length})</span>
               )}
             </h3>
             <Link
               href={`/submit?school=${schoolId}`}
               onClick={() => showToast("Taking you to add a venue!", "info")}
-              className="text-xs text-violet-400 hover:text-violet-300 flex items-center gap-0.5 transition-colors"
+              className="text-xs font-medium text-violet-400 hover:text-violet-300 flex items-center gap-0.5 transition-colors"
             >
               Add <ChevronRight size={12} />
             </Link>
           </div>
 
           {venues.length === 0 ? (
-            <div className="text-center py-8 bg-zinc-900/50 rounded-xl border border-zinc-800/50">
-              <Star size={24} className="mx-auto text-zinc-600 mb-2" />
-              <p className="text-zinc-500 text-sm">No venues yet</p>
+            <div className="text-center py-10 bg-zinc-900/40 rounded-2xl border border-zinc-800/40">
+              <Star size={28} className="mx-auto text-zinc-700 mb-3" />
+              <p className="text-zinc-400 text-sm font-medium">No venues yet</p>
               <Link
                 href={`/submit?school=${schoolId}`}
                 onClick={() => showToast("Be a trailblazer! Add the first venue.", "success")}
-                className="inline-flex mt-2 text-xs text-violet-400 hover:text-violet-300"
+                className="inline-flex mt-2 text-xs text-violet-400 hover:text-violet-300 transition-colors"
               >
                 Be the first to add one
               </Link>
