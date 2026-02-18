@@ -24,6 +24,7 @@ const Map = dynamic(() => import("@/components/Map"), {
 export default function Home() {
   const [selectedSchool, setSelectedSchool] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ lng: number; lat: number; zoom?: number } | null>(null);
+  const [showTwoYear, setShowTwoYear] = useState(false);
 
   const handleSchoolSelect = useCallback((school: School | MapSchool) => {
     setSelectedSchool(school.id);
@@ -44,12 +45,14 @@ export default function Home() {
       <SplashScreen />
 
       {/* Map */}
-      <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} />
+      <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} showTwoYear={showTwoYear} />
 
       {/* Search overlay */}
       <div className="absolute top-4 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto z-30">
         <SearchBar
           onSchoolSelect={handleSchoolSelect}
+          showTwoYear={showTwoYear}
+          onShowTwoYearChange={setShowTwoYear}
         />
       </div>
 

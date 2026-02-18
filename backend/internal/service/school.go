@@ -140,6 +140,11 @@ func (s *SchoolService) Search(_ context.Context, params model.SchoolSearchParam
 			continue
 		}
 
+		// ICLevel filter (1 = 4-year, 2 = 2-year, 3 = less-than-2-year)
+		if params.ICLevel > 0 && school.ICLevel != params.ICLevel {
+			continue
+		}
+
 		// Bounding box filter
 		if params.MinLat != 0 || params.MaxLat != 0 || params.MinLng != 0 || params.MaxLng != 0 {
 			if school.Latitude < params.MinLat || school.Latitude > params.MaxLat ||
@@ -242,6 +247,7 @@ func (s *SchoolService) GetAllForMap(_ context.Context) ([]map[string]interface{
 			"longitude":   school.Longitude,
 			"state":       school.State,
 			"control":     school.Control,
+			"iclevel":     school.ICLevel,
 			"venue_count": school.VenueCount,
 			"avg_rating":  school.AvgRating,
 		})

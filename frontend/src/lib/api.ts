@@ -88,6 +88,7 @@ export interface MapSchool {
   longitude: number;
   state: string;
   control: string;
+  iclevel: number;
   venue_count: number;
   avg_rating: number;
 }

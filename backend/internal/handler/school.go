@@ -25,6 +25,7 @@ func (h *SchoolHandler) Search(w http.ResponseWriter, r *http.Request) {
 
 	page, _ := strconv.Atoi(q.Get("page"))
 	limit, _ := strconv.Atoi(q.Get("limit"))
+	iclevel, _ := strconv.Atoi(q.Get("iclevel"))
 	minLat, _ := strconv.ParseFloat(q.Get("min_lat"), 64)
 	maxLat, _ := strconv.ParseFloat(q.Get("max_lat"), 64)
 	minLng, _ := strconv.ParseFloat(q.Get("min_lng"), 64)
@@ -34,6 +35,7 @@ func (h *SchoolHandler) Search(w http.ResponseWriter, r *http.Request) {
 		Query:   q.Get("q"),
 		State:   q.Get("state"),
 		Control: q.Get("control"),
+		ICLevel: iclevel,
 		Sort:    q.Get("sort"),
 		Page:    page,
 		Limit:   limit,

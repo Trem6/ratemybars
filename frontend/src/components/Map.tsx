@@ -12,9 +12,10 @@ const DARK_STYLE = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.
 interface MapProps {
   onSchoolClick?: (school: MapSchool) => void;
   flyTo?: { lng: number; lat: number; zoom?: number } | null;
+  showTwoYear?: boolean;
 }
 
-export default function Map({ onSchoolClick, flyTo }: MapProps) {
+export default function Map({ onSchoolClick, flyTo, showTwoYear = false }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -45,6 +46,7 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
             name: s.name,
             state: s.state,
             control: s.control,
+            iclevel: s.iclevel || 1,
             venue_count: s.venue_count || 0,
             avg_rating: s.avg_rating || 0,
           },
@@ -57,11 +59,15 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
         data: geojson,
       });
 
+      // Default filter: only 4-year schools (iclevel=1)
+      const defaultFilter: maplibregl.FilterSpecification = ["==", ["get", "iclevel"], 1];
+
       // Outer neon glow — scales with zoom
       mapInstance.addLayer({
         id: "school-glow",
         type: "circle",
         source: "schools",
+        filter: defaultFilter,
         paint: {
           "circle-color": [
             "case",
@@ -91,6 +97,7 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
         id: "school-points",
         type: "circle",
         source: "schools",
+        filter: defaultFilter,
         paint: {
           "circle-color": [
             "case",
@@ -259,6 +266,22 @@ export default function Map({ onSchoolClick, flyTo }: MapProps) {
       });
     }
   }, [flyTo, loaded]);
+
+  // Update map filter when showTwoYear changes
+  useEffect(() => {
+    if (!map.current || !loaded) return;
+    const m = map.current;
+    // Show all schools or only 4-year
+    const filter: maplibregl.FilterSpecification | null = showTwoYear
+      ? null  // no filter = show all
+      : ["==", ["get", "iclevel"], 1];
+    try {
+      m.setFilter("school-points", filter);
+      m.setFilter("school-glow", filter);
+    } catch {
+      // Layers might not exist yet
+    }
+  }, [showTwoYear, loaded]);
 
   return (
     <>

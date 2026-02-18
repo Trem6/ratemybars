@@ -107,6 +107,7 @@ type SchoolSearchParams struct {
 	Query   string  `json:"query,omitempty"`
 	State   string  `json:"state,omitempty"`
 	Control string  `json:"control,omitempty"` // "public" or "private_nonprofit"
+	ICLevel int     `json:"iclevel,omitempty"` // 1 = 4-year, 2 = 2-year, 3 = less-than-2-year; 0 = all
 	Sort    string  `json:"sort,omitempty"`    // "venue_count", "name"
 	Page    int     `json:"page"`
 	Limit   int     `json:"limit"`

@@ -7,9 +7,11 @@ import { searchSchools, type School } from "@/lib/api";
 interface SearchBarProps {
   onSchoolSelect: (school: School) => void;
   onFilterChange?: (filters: { state: string; control: string }) => void;
+  showTwoYear?: boolean;
+  onShowTwoYearChange?: (show: boolean) => void;
 }
 
-export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarProps) {
+export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear = false, onShowTwoYearChange }: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<School[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -29,13 +31,17 @@ export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarP
     }
     setLoading(true);
     try {
-      const res = await searchSchools({
+      const params: Record<string, string> = {
         q,
         state: filterState,
         control: filterControl,
         limit: "10",
         page: "1",
-      });
+      };
+      if (!showTwoYear) {
+        params.iclevel = "1";
+      }
+      const res = await searchSchools(params);
       setResults(res.data || []);
       setShowResults(true);
     } catch {
@@ -43,7 +49,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarP
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showTwoYear]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -51,7 +57,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarP
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, state, control, doSearch]);
+  }, [query, state, control, showTwoYear, doSearch]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -79,6 +85,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarP
   const handleFilterClear = () => {
     setState("");
     setControl("");
+    onShowTwoYearChange?.(false);
     onFilterChange?.({ state: "", control: "" });
     setShowFilters(false);
     if (query.length < 2) {
@@ -117,7 +124,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarP
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`p-1.5 rounded-md transition-colors ${
-              showFilters || state || control
+              showFilters || state || control || showTwoYear
                 ? "bg-violet-600/20 text-violet-400"
                 : "hover:bg-zinc-800 text-zinc-500 hover:text-white"
             }`}
@@ -157,8 +164,23 @@ export default function SearchBar({ onSchoolSelect, onFilterChange }: SearchBarP
               </select>
             </div>
           </div>
+          <label className="mt-3 flex items-center gap-2.5 cursor-pointer group">
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={showTwoYear}
+                onChange={(e) => onShowTwoYearChange?.(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 rounded-full bg-zinc-700 peer-checked:bg-violet-600 transition-colors" />
+              <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-zinc-300 peer-checked:translate-x-4 peer-checked:bg-white transition-transform" />
+            </div>
+            <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">
+              Include 2-Year Colleges
+            </span>
+          </label>
           <div className="mt-3 flex gap-2">
-            {(state || control) && (
+            {(state || control || showTwoYear) && (
               <button
                 onClick={handleFilterClear}
                 className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-lg transition-colors"
