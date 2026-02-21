@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 	"sync"
+
+	"github.com/ratemybars/backend/internal/model"
 )
 
 type fratEntry struct {
@@ -12,16 +14,27 @@ type fratEntry struct {
 	SchoolID string `json:"school_id"`
 }
 
-// FraternityService provides read-only access to fraternity chapter data.
+// StatsFunc returns rating stats for all frats at a school.
+type StatsFunc func(schoolID string) map[string]model.FratWithRating
+
+// FraternityService provides access to fraternity chapter data with live rating stats.
 type FraternityService struct {
 	mu       sync.RWMutex
 	bySchool map[string][]string // school_id -> sorted fraternity names
+	statsFn  StatsFunc
 }
 
 func NewFraternityService() *FraternityService {
 	return &FraternityService{
 		bySchool: make(map[string][]string),
 	}
+}
+
+// SetStatsFunc sets the callback used to enrich fraternity listings with rating data.
+func (s *FraternityService) SetStatsFunc(fn StatsFunc) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.statsFn = fn
 }
 
 // Load parses the embedded fraternities.json data.
@@ -46,11 +59,40 @@ func (s *FraternityService) Load(data []byte) error {
 	return nil
 }
 
-// GetBySchool returns the sorted list of fraternity names for a school.
-func (s *FraternityService) GetBySchool(schoolID string) []string {
+// GetBySchool returns fraternities enriched with live rating data.
+func (s *FraternityService) GetBySchool(schoolID string) []model.FratWithRating {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.bySchool[schoolID]
+	names := s.bySchool[schoolID]
+	statsFn := s.statsFn
+	s.mu.RUnlock()
+
+	if len(names) == 0 {
+		return nil
+	}
+
+	var stats map[string]model.FratWithRating
+	if statsFn != nil {
+		stats = statsFn(schoolID)
+	}
+
+	result := make([]model.FratWithRating, 0, len(names))
+	for _, name := range names {
+		if fwr, ok := stats[name]; ok {
+			result = append(result, fwr)
+		} else {
+			result = append(result, model.FratWithRating{Name: name})
+		}
+	}
+
+	// Rated frats first (by rating count desc), then unrated alphabetically
+	sort.SliceStable(result, func(i, j int) bool {
+		if result[i].RatingCount != result[j].RatingCount {
+			return result[i].RatingCount > result[j].RatingCount
+		}
+		return result[i].Name < result[j].Name
+	})
+
+	return result
 }
 
 // Count returns the number of fraternities at a school.

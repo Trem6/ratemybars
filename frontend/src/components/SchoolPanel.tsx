@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { X, MapPin, Globe, Star, ChevronRight, ExternalLink, Users } from "lucide-react";
 import Link from "next/link";
-import { getSchool, getSchoolVenues, getSchoolFraternities, type School, type Venue } from "@/lib/api";
+import { getSchool, getSchoolVenues, getSchoolFraternities, type School, type Venue, type FratWithRating } from "@/lib/api";
 import { useToast } from "@/lib/toast-context";
 import { SchoolPanelSkeleton } from "./Skeleton";
 import VenueCard from "./VenueCard";
+import FratCard from "./FratCard";
 import { TierTag } from "./TierBadge";
 import PartyGauge from "./PartyGauge";
 
@@ -18,7 +19,7 @@ interface SchoolPanelProps {
 export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
   const [school, setSchool] = useState<School | null>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
-  const [fraternities, setFraternities] = useState<string[]>([]);
+  const [fraternities, setFraternities] = useState<FratWithRating[]>([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
 
@@ -39,6 +40,12 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
     }
   }, []);
 
+  const refreshFrats = useCallback(() => {
+    getSchoolFraternities(schoolId)
+      .then((f) => setFraternities(f || []))
+      .catch(console.error);
+  }, [schoolId]);
+
   useEffect(() => {
     fetchData(schoolId);
   }, [schoolId, fetchData]);
@@ -51,6 +58,8 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
 
   const displayVenues = venues.slice(0, 3);
   const hasMoreVenues = venues.length > 3;
+  const displayFrats = fraternities.slice(0, 5);
+  const hasMoreFrats = fraternities.length > 5;
 
   return (
     <div className="fixed right-0 top-14 bottom-0 w-full sm:w-[480px] bg-zinc-950/90 backdrop-blur-2xl border-l border-zinc-700/30 z-40 overflow-y-auto animate-slide-in">
@@ -115,23 +124,36 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
           <>
             <div className="h-px bg-zinc-800/60" />
             <div>
-              <div className="flex items-center gap-2 mb-2.5">
-                <Users size={14} className="text-blue-400" />
-                <h3 className="text-sm font-semibold text-white">
-                  Greek Life
-                  <span className="text-zinc-500 font-normal ml-1.5">({fraternities.length})</span>
-                </h3>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Users size={14} className="text-blue-400" />
+                  <h3 className="text-sm font-semibold text-white">
+                    Greek Life
+                    <span className="text-zinc-500 font-normal ml-1.5">({fraternities.length})</span>
+                  </h3>
+                </div>
+                <span className="text-[10px] text-zinc-600">tap to rate</span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {fraternities.map((name) => (
-                  <span
-                    key={name}
-                    className="inline-flex px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-500/8 text-blue-300 border border-blue-500/15 hover:bg-blue-500/15 transition-colors"
-                  >
-                    {name}
-                  </span>
+              <div className="space-y-0.5">
+                {displayFrats.map((frat) => (
+                  <FratCard
+                    key={frat.name}
+                    frat={frat}
+                    schoolId={schoolId}
+                    compact
+                    onRated={refreshFrats}
+                  />
                 ))}
               </div>
+              {hasMoreFrats && (
+                <Link
+                  href={`/school/${schoolId}`}
+                  className="flex items-center justify-center gap-1.5 w-full py-2 mt-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-white border border-zinc-800/40 hover:border-zinc-700/60 hover:bg-zinc-900/40 transition-all"
+                >
+                  See All {fraternities.length} Fraternities
+                  <ChevronRight size={12} />
+                </Link>
+              )}
             </div>
           </>
         )}
@@ -139,7 +161,7 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
         {/* Divider */}
         <div className="h-px bg-zinc-800/60" />
 
-        {/* Venues Section — show top 3 */}
+        {/* Venues Section -- show top 3 */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-white">

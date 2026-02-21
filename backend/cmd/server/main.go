@@ -160,11 +160,13 @@ func main() {
 
 	// Load fraternity data
 	fratSvc := service.NewFraternityService()
+	fratRatingSvc := service.NewFratRatingService()
 	if err := fratSvc.Load(seeddata.FraternitiesJSON); err != nil {
 		log.Printf("WARNING: Failed to load fraternity data: %v", err)
 	} else {
 		log.Printf("Loaded fraternity data for %d schools", fratSvc.SchoolCount())
 	}
+	fratSvc.SetStatsFunc(fratRatingSvc.GetSchoolStats)
 	schoolSvc.UpdateFratCounts(func(schoolID string) int {
 		return fratSvc.Count(schoolID)
 	})
@@ -174,7 +176,7 @@ func main() {
 	venueHandler := handler.NewVenueHandler(venueSvc)
 	ratingHandler := handler.NewRatingHandler(ratingSvc)
 	authHandler := handler.NewAuthHandler(authSvc)
-	fratHandler := handler.NewFraternityHandler(fratSvc)
+	fratHandler := handler.NewFraternityHandler(fratSvc, fratRatingSvc)
 
 	// Build router
 	r := chi.NewRouter()
@@ -251,6 +253,7 @@ func main() {
 			r.Get("/auth/me", authHandler.Me)
 			r.Post("/venues", venueHandler.Create)
 			r.Post("/ratings", ratingHandler.Create)
+			r.Post("/frat-ratings", fratHandler.CreateRating)
 		})
 
 		// Admin routes (auth + admin role required)

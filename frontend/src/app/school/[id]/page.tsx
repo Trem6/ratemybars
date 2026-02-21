@@ -14,8 +14,9 @@ import {
   Users,
 } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { getSchool, getSchoolVenues, getSchoolFraternities, type School, type Venue } from "@/lib/api";
+import { getSchool, getSchoolVenues, getSchoolFraternities, type School, type Venue, type FratWithRating } from "@/lib/api";
 import VenueCard from "@/components/VenueCard";
+import FratCard from "@/components/FratCard";
 import TierBadge from "@/components/TierBadge";
 import PartyGauge from "@/components/PartyGauge";
 import AnimatedStats from "@/components/AnimatedStats";
@@ -132,7 +133,7 @@ export default function SchoolPage() {
   const id = params.id as string;
   const [school, setSchool] = useState<School | null>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
-  const [fraternities, setFraternities] = useState<string[]>([]);
+  const [fraternities, setFraternities] = useState<FratWithRating[]>([]);
   const [loading, setLoading] = useState(true);
   const setRef = useFadeIn();
 
@@ -152,6 +153,12 @@ export default function SchoolPage() {
       setLoading(false);
     }
   }, []);
+
+  const refreshFrats = useCallback(() => {
+    getSchoolFraternities(id)
+      .then((f) => setFraternities(f || []))
+      .catch(console.error);
+  }, [id]);
 
   useEffect(() => {
     fetchData(id);
@@ -334,17 +341,15 @@ export default function SchoolPage() {
                 </span>
               </h2>
             </div>
-            <div className="bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/30 rounded-2xl p-5">
-              <div className="flex flex-wrap gap-2">
-                {fraternities.map((name) => (
-                  <span
-                    key={name}
-                    className="inline-flex px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-500/8 text-blue-300 border border-blue-500/15 hover:bg-blue-500/15 transition-colors"
-                  >
-                    {name}
-                  </span>
-                ))}
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {fraternities.map((frat) => (
+                <FratCard
+                  key={frat.name}
+                  frat={frat}
+                  schoolId={id}
+                  onRated={refreshFrats}
+                />
+              ))}
             </div>
           </div>
         )}

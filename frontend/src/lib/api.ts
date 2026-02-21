@@ -128,6 +128,12 @@ export interface Rating {
   created_at: string;
 }
 
+export interface FratWithRating {
+  name: string;
+  avg_rating: number;
+  rating_count: number;
+}
+
 export interface AuthResponse {
   token: string;
   user: {
@@ -165,7 +171,7 @@ export const getSchoolVenues = (id: string, page = 1, limit = 20) =>
   });
 
 export const getSchoolFraternities = (id: string) =>
-  apiFetch<string[]>(`/api/schools/${id}/fraternities`);
+  apiFetch<FratWithRating[]>(`/api/schools/${id}/fraternities`);
 
 export const getStates = () =>
   apiFetch<string[]>("/api/schools/states");
@@ -198,6 +204,16 @@ export const createRating = (data: {
   venue_id: string;
 }) =>
   apiFetch<Rating>("/api/ratings", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const createFratRating = (data: {
+  frat_name: string;
+  school_id: string;
+  score: number;
+}) =>
+  apiFetch<FratWithRating>("/api/frat-ratings", {
     method: "POST",
     body: JSON.stringify(data),
   });

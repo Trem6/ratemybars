@@ -44,7 +44,7 @@ func normalize(name string) string {
 	s = strings.ReplaceAll(s, ",", " ")
 	s = strings.ReplaceAll(s, ".", " ")
 	s = strings.ReplaceAll(s, "'", "")
-	s = strings.ReplaceAll(s, "\u2019", "") // right single quote
+	s = strings.ReplaceAll(s, "\u2019", "")  // right single quote
 	s = strings.ReplaceAll(s, "\u2013", " ") // en dash
 	s = strings.ReplaceAll(s, "&", " and ")
 	s = stripRe.ReplaceAllString(s, " ")

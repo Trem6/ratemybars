@@ -88,6 +88,30 @@ type CreateRatingRequest struct {
 	VenueID string  `json:"venue_id"`
 }
 
+// FratRating represents a user's rating of a fraternity chapter at a specific school.
+type FratRating struct {
+	ID         string    `json:"id"`
+	FratName   string    `json:"frat_name"`
+	SchoolID   string    `json:"school_id"`
+	Score      float32   `json:"score"` // 1-5 scale
+	AuthorID   string    `json:"author_id"`
+	AuthorName string    `json:"author_name,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
+type CreateFratRatingRequest struct {
+	FratName string  `json:"frat_name"`
+	SchoolID string  `json:"school_id"`
+	Score    float32 `json:"score"` // 1-5
+}
+
+// FratWithRating is the enriched response returned for fraternity listings.
+type FratWithRating struct {
+	Name        string  `json:"name"`
+	AvgRating   float64 `json:"avg_rating"`
+	RatingCount int     `json:"rating_count"`
+}
+
 type RegisterRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
