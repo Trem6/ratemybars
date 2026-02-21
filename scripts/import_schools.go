@@ -130,16 +130,22 @@ func main() {
 			controlStr = "private_nonprofit"
 		}
 
+		iclevel := getInt(row, "ICLEVEL")
+		instName := getCol(row, "INSTNM")
+		if iclevel == 1 && strings.Contains(strings.ToLower(instName), "community college") {
+			iclevel = 2
+		}
+
 		school := School{
 			UnitID:    getInt(row, "UNITID"),
-			Name:      getCol(row, "INSTNM"),
+			Name:      instName,
 			Alias:     getCol(row, "IALIAS"),
 			Address:   getCol(row, "ADDR"),
 			City:      getCol(row, "CITY"),
 			State:     getCol(row, "STABBR"),
 			Zip:       getCol(row, "ZIP"),
 			Control:   controlStr,
-			ICLevel:   getInt(row, "ICLEVEL"),
+			ICLevel:   iclevel,
 			Website:   getCol(row, "WEBADDR"),
 			Latitude:  lat,
 			Longitude: lon,

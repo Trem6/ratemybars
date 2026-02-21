@@ -1,17 +1,26 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, X, Filter } from "lucide-react";
-import { searchSchools, type School } from "@/lib/api";
+import { Search, X, Filter, Users, ChevronDown } from "lucide-react";
+import { searchSchools, getAllFraternities, type School } from "@/lib/api";
 
 interface SearchBarProps {
   onSchoolSelect: (school: School) => void;
   onFilterChange?: (filters: { state: string; control: string }) => void;
   showTwoYear?: boolean;
   onShowTwoYearChange?: (show: boolean) => void;
+  selectedFrat?: string;
+  onFratFilterChange?: (fratName: string) => void;
 }
 
-export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear = false, onShowTwoYearChange }: SearchBarProps) {
+export default function SearchBar({
+  onSchoolSelect,
+  onFilterChange,
+  showTwoYear = false,
+  onShowTwoYearChange,
+  selectedFrat = "",
+  onFratFilterChange,
+}: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<School[]>([]);
   const [showResults, setShowResults] = useState(false);
@@ -22,6 +31,25 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>(null);
+
+  // Fraternity autocomplete state
+  const [fratNames, setFratNames] = useState<string[]>([]);
+  const [fratQuery, setFratQuery] = useState("");
+  const [showFratDropdown, setShowFratDropdown] = useState(false);
+  const fratInputRef = useRef<HTMLDivElement>(null);
+
+  // Load fraternity names on first filter panel open
+  useEffect(() => {
+    if (showFilters && fratNames.length === 0) {
+      getAllFraternities()
+        .then(setFratNames)
+        .catch(console.error);
+    }
+  }, [showFilters, fratNames.length]);
+
+  const filteredFrats = fratQuery
+    ? fratNames.filter((n) => n.toLowerCase().includes(fratQuery.toLowerCase()))
+    : fratNames;
 
   const doSearch = useCallback(async (q: string, filterState: string, filterControl: string) => {
     const hasFilters = filterState !== "" || filterControl !== "";
@@ -69,6 +97,18 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Close frat dropdown on outside click
+  useEffect(() => {
+    if (!showFratDropdown) return;
+    const handler = (e: MouseEvent) => {
+      if (fratInputRef.current && !fratInputRef.current.contains(e.target as Node)) {
+        setShowFratDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [showFratDropdown]);
+
   const handleSelect = (school: School) => {
     setQuery(school.name);
     setShowResults(false);
@@ -78,7 +118,6 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
   const handleFilterApply = () => {
     onFilterChange?.({ state, control });
     setShowFilters(false);
-    // Immediately trigger search with current filters
     doSearch(query, state, control);
   };
 
@@ -86,6 +125,8 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
     setState("");
     setControl("");
     onShowTwoYearChange?.(false);
+    onFratFilterChange?.("");
+    setFratQuery("");
     onFilterChange?.({ state: "", control: "" });
     setShowFilters(false);
     if (query.length < 2) {
@@ -93,6 +134,14 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
       setShowResults(false);
     }
   };
+
+  const handleFratSelect = (name: string) => {
+    onFratFilterChange?.(name);
+    setFratQuery("");
+    setShowFratDropdown(false);
+  };
+
+  const hasActiveFilters = state || control || showTwoYear || selectedFrat;
 
   return (
     <div className="relative w-full max-w-5xl" ref={dropdownRef}>
@@ -124,7 +173,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`p-2 rounded-lg transition-colors ${
-              showFilters || state || control || showTwoYear
+              showFilters || hasActiveFilters
                 ? "bg-violet-600/20 text-violet-400"
                 : "hover:bg-zinc-800 text-zinc-500 hover:text-white"
             }`}
@@ -133,6 +182,22 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
           </button>
         </div>
       </div>
+
+      {/* Active frat filter badge */}
+      {selectedFrat && !showFilters && (
+        <div className="absolute top-full left-0 right-0 mt-1.5 flex justify-center z-40">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-500/15 text-blue-300 border border-blue-500/20">
+            <Users size={11} />
+            {selectedFrat}
+            <button
+              onClick={() => onFratFilterChange?.("")}
+              className="ml-0.5 hover:text-white transition-colors"
+            >
+              <X size={11} />
+            </button>
+          </span>
+        </div>
+      )}
 
       {/* Filter Panel */}
       {showFilters && (
@@ -164,6 +229,56 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
               </select>
             </div>
           </div>
+
+          {/* Fraternity Filter */}
+          <div className="mt-3" ref={fratInputRef}>
+            <label className="block text-xs text-zinc-400 mb-1">
+              <span className="flex items-center gap-1">
+                <Users size={11} />
+                Greek Life Filter
+              </span>
+            </label>
+            {selectedFrat ? (
+              <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-blue-500/30 rounded-lg">
+                <span className="text-sm text-blue-300 flex-1 truncate">{selectedFrat}</span>
+                <button
+                  onClick={() => onFratFilterChange?.("")}
+                  className="text-zinc-500 hover:text-white transition-colors shrink-0"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="text"
+                  value={fratQuery}
+                  onChange={(e) => {
+                    setFratQuery(e.target.value);
+                    setShowFratDropdown(true);
+                  }}
+                  onFocus={() => setShowFratDropdown(true)}
+                  placeholder="Search fraternities..."
+                  className="w-full px-3 py-2 pr-8 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+                />
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                {showFratDropdown && filteredFrats.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+                    {filteredFrats.map((name) => (
+                      <button
+                        key={name}
+                        onClick={() => handleFratSelect(name)}
+                        className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <label className="mt-3 flex items-center gap-2.5 cursor-pointer group">
             <div className="relative">
               <input
@@ -180,7 +295,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
             </span>
           </label>
           <div className="mt-3 flex gap-2">
-            {(state || control || showTwoYear) && (
+            {hasActiveFilters && (
               <button
                 onClick={handleFilterClear}
                 className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-lg transition-colors"
@@ -200,7 +315,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
 
       {/* Results Dropdown */}
       {showResults && results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-2.5 bg-zinc-900/90 backdrop-blur-xl border border-zinc-700/30 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto">
+        <div className={`absolute top-full left-0 right-0 ${selectedFrat && !showFilters ? "mt-10" : "mt-2.5"} bg-zinc-900/90 backdrop-blur-xl border border-zinc-700/30 rounded-2xl shadow-2xl overflow-hidden z-50 max-h-96 overflow-y-auto`}>
           {results.map((school) => (
             <button
               key={school.id}
@@ -223,7 +338,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
       )}
 
       {showResults && query.length >= 2 && results.length === 0 && !loading && (
-        <div className="absolute top-full left-0 right-0 mt-2.5 bg-zinc-900/90 backdrop-blur-xl border border-zinc-700/30 rounded-2xl shadow-2xl p-5 z-50">
+        <div className={`absolute top-full left-0 right-0 ${selectedFrat && !showFilters ? "mt-10" : "mt-2.5"} bg-zinc-900/90 backdrop-blur-xl border border-zinc-700/30 rounded-2xl shadow-2xl p-5 z-50`}>
           <p className="text-zinc-500 text-sm text-center">No schools found</p>
         </div>
       )}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 import SearchBar from "@/components/SearchBar";
 import SchoolPanel from "@/components/SchoolPanel";
@@ -8,7 +8,7 @@ import StatsBar from "@/components/StatsBar";
 import ExplorePanel from "@/components/ExplorePanel";
 import SplashScreen from "@/components/SplashScreen";
 import ActivityTicker from "@/components/ActivityTicker";
-import type { School, MapSchool } from "@/lib/api";
+import { getSchoolsByFrat, type School, type MapSchool } from "@/lib/api";
 
 // Dynamic import for Map to avoid SSR issues with maplibre-gl
 const Map = dynamic(() => import("@/components/Map"), {
@@ -25,6 +25,18 @@ export default function Home() {
   const [selectedSchool, setSelectedSchool] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ lng: number; lat: number; zoom?: number } | null>(null);
   const [showTwoYear, setShowTwoYear] = useState(false);
+  const [selectedFrat, setSelectedFrat] = useState("");
+  const [fratSchoolIds, setFratSchoolIds] = useState<string[] | undefined>(undefined);
+
+  useEffect(() => {
+    if (!selectedFrat) {
+      setFratSchoolIds(undefined);
+      return;
+    }
+    getSchoolsByFrat(selectedFrat)
+      .then((ids) => setFratSchoolIds(ids || []))
+      .catch(() => setFratSchoolIds(undefined));
+  }, [selectedFrat]);
 
   const handleSchoolSelect = useCallback((school: School | MapSchool) => {
     setSelectedSchool(school.id);
@@ -45,7 +57,7 @@ export default function Home() {
       <SplashScreen />
 
       {/* Map */}
-      <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} showTwoYear={showTwoYear} />
+      <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} showTwoYear={showTwoYear} fratSchoolIds={fratSchoolIds} />
 
       {/* Search overlay */}
       <div className="absolute top-4 left-4 right-4 sm:left-[10%] sm:right-[10%] z-30 flex justify-center">
@@ -53,6 +65,8 @@ export default function Home() {
           onSchoolSelect={handleSchoolSelect}
           showTwoYear={showTwoYear}
           onShowTwoYearChange={setShowTwoYear}
+          selectedFrat={selectedFrat}
+          onFratFilterChange={setSelectedFrat}
         />
       </div>
 

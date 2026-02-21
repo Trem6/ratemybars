@@ -28,6 +28,29 @@ func (h *FraternityHandler) GetBySchool(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, frats)
 }
 
+// ListAll handles GET /api/fraternities
+func (h *FraternityHandler) ListAll(w http.ResponseWriter, r *http.Request) {
+	names := h.svc.ListAll()
+	if names == nil {
+		names = []string{}
+	}
+	writeJSON(w, http.StatusOK, names)
+}
+
+// GetSchoolsByFrat handles GET /api/fraternities/schools?name=...
+func (h *FraternityHandler) GetSchoolsByFrat(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		writeError(w, http.StatusBadRequest, "name parameter is required")
+		return
+	}
+	ids := h.svc.GetSchoolsByFrat(name)
+	if ids == nil {
+		ids = []string{}
+	}
+	writeJSON(w, http.StatusOK, ids)
+}
+
 // CreateRating handles POST /api/frat-ratings
 func (h *FraternityHandler) CreateRating(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateFratRatingRequest

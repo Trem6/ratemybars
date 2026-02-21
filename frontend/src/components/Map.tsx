@@ -13,9 +13,10 @@ interface MapProps {
   onSchoolClick?: (school: MapSchool) => void;
   flyTo?: { lng: number; lat: number; zoom?: number } | null;
   showTwoYear?: boolean;
+  fratSchoolIds?: string[];
 }
 
-export default function Map({ onSchoolClick, flyTo, showTwoYear = false }: MapProps) {
+export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSchoolIds }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -267,21 +268,31 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false }: MapPr
     }
   }, [flyTo, loaded]);
 
-  // Update map filter when showTwoYear changes
+  // Update map filters when showTwoYear or fratSchoolIds changes
   useEffect(() => {
     if (!map.current || !loaded) return;
     const m = map.current;
-    // Show all schools or only 4-year
-    const filter: maplibregl.FilterSpecification | null = showTwoYear
-      ? null  // no filter = show all
-      : ["==", ["get", "iclevel"], 1];
+
+    const filters: maplibregl.FilterSpecification[] = [];
+    if (!showTwoYear) {
+      filters.push(["==", ["get", "iclevel"], 1]);
+    }
+    if (fratSchoolIds) {
+      filters.push(["in", ["get", "id"], ["literal", fratSchoolIds]]);
+    }
+
+    const combined: maplibregl.FilterSpecification | null =
+      filters.length > 1
+        ? (["all", ...filters] as maplibregl.FilterSpecification)
+        : filters[0] ?? null;
+
     try {
-      m.setFilter("school-points", filter);
-      m.setFilter("school-glow", filter);
+      m.setFilter("school-points", combined);
+      m.setFilter("school-glow", combined);
     } catch {
       // Layers might not exist yet
     }
-  }, [showTwoYear, loaded]);
+  }, [showTwoYear, fratSchoolIds, loaded]);
 
   return (
     <>

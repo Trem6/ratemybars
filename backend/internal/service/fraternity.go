@@ -21,12 +21,15 @@ type StatsFunc func(schoolID string) map[string]model.FratWithRating
 type FraternityService struct {
 	mu       sync.RWMutex
 	bySchool map[string][]string // school_id -> sorted fraternity names
+	byName   map[string][]string // frat_name -> school IDs
+	allNames []string            // sorted unique frat names
 	statsFn  StatsFunc
 }
 
 func NewFraternityService() *FraternityService {
 	return &FraternityService{
 		bySchool: make(map[string][]string),
+		byName:   make(map[string][]string),
 	}
 }
 
@@ -48,15 +51,40 @@ func (s *FraternityService) Load(data []byte) error {
 	defer s.mu.Unlock()
 
 	s.bySchool = make(map[string][]string, 1000)
+	s.byName = make(map[string][]string, 120)
+	nameSet := make(map[string]bool, 120)
+
 	for _, e := range entries {
 		s.bySchool[e.SchoolID] = append(s.bySchool[e.SchoolID], e.Name)
+		s.byName[e.Name] = append(s.byName[e.Name], e.SchoolID)
+		nameSet[e.Name] = true
 	}
 
 	for schoolID := range s.bySchool {
 		sort.Strings(s.bySchool[schoolID])
 	}
 
+	s.allNames = make([]string, 0, len(nameSet))
+	for name := range nameSet {
+		s.allNames = append(s.allNames, name)
+	}
+	sort.Strings(s.allNames)
+
 	return nil
+}
+
+// ListAll returns all unique fraternity names, sorted.
+func (s *FraternityService) ListAll() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.allNames
+}
+
+// GetSchoolsByFrat returns the school IDs that have a given fraternity.
+func (s *FraternityService) GetSchoolsByFrat(fratName string) []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.byName[fratName]
 }
 
 // GetBySchool returns fraternities enriched with live rating data.
@@ -84,7 +112,6 @@ func (s *FraternityService) GetBySchool(schoolID string) []model.FratWithRating 
 		}
 	}
 
-	// Rated frats first (by rating count desc), then unrated alphabetically
 	sort.SliceStable(result, func(i, j int) bool {
 		if result[i].RatingCount != result[j].RatingCount {
 			return result[i].RatingCount > result[j].RatingCount

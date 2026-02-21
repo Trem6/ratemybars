@@ -219,6 +219,10 @@ func main() {
 			r.Get("/schools/{id}/venues", venueHandler.ListBySchool)
 			r.Get("/schools/{id}/fraternities", fratHandler.GetBySchool)
 
+			// Fraternity routes
+			r.Get("/fraternities", fratHandler.ListAll)
+			r.Get("/fraternities/schools", fratHandler.GetSchoolsByFrat)
+
 			// Venue routes
 			r.Get("/venues/{id}", venueHandler.GetByID)
 			r.Get("/venues/{id}/ratings", ratingHandler.ListByVenue)
