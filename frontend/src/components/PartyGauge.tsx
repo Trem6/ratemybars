@@ -31,9 +31,10 @@ function getScoreLabel(score: number): string {
 interface PartyGaugeProps {
   venueCount: number;
   avgRating: number;
+  size?: "sm" | "md";
 }
 
-export default function PartyGauge({ venueCount, avgRating }: PartyGaugeProps) {
+export default function PartyGauge({ venueCount, avgRating, size = "md" }: PartyGaugeProps) {
   const score = computeScore(venueCount, avgRating);
   const [animatedScore, setAnimatedScore] = useState(0);
   const [dashOffset, setDashOffset] = useState(283); // full circle circumference
@@ -79,32 +80,37 @@ export default function PartyGauge({ venueCount, avgRating }: PartyGaugeProps) {
   const color = getScoreColor(score);
   const label = getScoreLabel(score);
 
+  const isSmall = size === "sm";
+  const containerSize = isSmall ? "w-24 h-24" : "w-32 h-32";
+  const strokeW = isSmall ? 6 : 7;
+  const scoreTextClass = isSmall ? "text-2xl" : "text-3xl";
+  const labelTextClass = isSmall ? "text-[8px]" : "text-[9px]";
+  const bottomLabelClass = isSmall ? "text-[10px] -mt-0.5" : "text-xs -mt-1";
+
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-32 h-32">
+      <div className={`relative ${containerSize}`}>
         <svg
           viewBox="0 0 100 100"
           className="w-full h-full -rotate-[225deg]"
         >
-          {/* Background track */}
           <circle
             cx="50"
             cy="50"
             r={radius}
             fill="none"
             stroke="rgba(63,63,70,0.25)"
-            strokeWidth="7"
+            strokeWidth={strokeW}
             strokeDasharray={`${arcLength} ${circumference}`}
             strokeLinecap="round"
           />
-          {/* Animated fill */}
           <circle
             cx="50"
             cy="50"
             r={radius}
             fill="none"
             stroke={color}
-            strokeWidth="7"
+            strokeWidth={strokeW}
             strokeDasharray={`${arcLength} ${circumference}`}
             strokeDashoffset={dashOffset}
             strokeLinecap="round"
@@ -114,21 +120,20 @@ export default function PartyGauge({ venueCount, avgRating }: PartyGaugeProps) {
             }}
           />
         </svg>
-        {/* Center text */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
-            className="text-3xl font-black tabular-nums leading-none"
+            className={`${scoreTextClass} font-black tabular-nums leading-none`}
             style={{ color }}
           >
             {animatedScore}
           </span>
-          <span className="text-[9px] font-semibold text-zinc-500 uppercase tracking-widest mt-1">
+          <span className={`${labelTextClass} font-semibold text-zinc-500 uppercase tracking-widest mt-1`}>
             Party Score
           </span>
         </div>
       </div>
       <span
-        className="text-xs font-bold uppercase tracking-wider -mt-1"
+        className={`${bottomLabelClass} font-bold uppercase tracking-wider`}
         style={{ color }}
       >
         {label}

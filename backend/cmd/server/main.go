@@ -158,11 +158,23 @@ func main() {
 	schoolSvc.UpdateSchoolRatings(schoolAvgs)
 	log.Printf("Updated avg ratings for %d schools", len(schoolAvgs))
 
+	// Load fraternity data
+	fratSvc := service.NewFraternityService()
+	if err := fratSvc.Load(seeddata.FraternitiesJSON); err != nil {
+		log.Printf("WARNING: Failed to load fraternity data: %v", err)
+	} else {
+		log.Printf("Loaded fraternity data for %d schools", fratSvc.SchoolCount())
+	}
+	schoolSvc.UpdateFratCounts(func(schoolID string) int {
+		return fratSvc.Count(schoolID)
+	})
+
 	// Initialize handlers
 	schoolHandler := handler.NewSchoolHandler(schoolSvc)
 	venueHandler := handler.NewVenueHandler(venueSvc)
 	ratingHandler := handler.NewRatingHandler(ratingSvc)
 	authHandler := handler.NewAuthHandler(authSvc)
+	fratHandler := handler.NewFraternityHandler(fratSvc)
 
 	// Build router
 	r := chi.NewRouter()
@@ -203,6 +215,7 @@ func main() {
 			r.Get("/schools/states", schoolHandler.GetStates)
 			r.Get("/schools/{id}", schoolHandler.GetByID)
 			r.Get("/schools/{id}/venues", venueHandler.ListBySchool)
+			r.Get("/schools/{id}/fraternities", fratHandler.GetBySchool)
 
 			// Venue routes
 			r.Get("/venues/{id}", venueHandler.GetByID)

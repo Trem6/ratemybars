@@ -8,13 +8,13 @@ import {
   MapPin,
   Globe,
   Plus,
-  GraduationCap,
   Building2,
   Map as MapIcon,
   Star,
+  Users,
 } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { getSchool, getSchoolVenues, type School, type Venue } from "@/lib/api";
+import { getSchool, getSchoolVenues, getSchoolFraternities, type School, type Venue } from "@/lib/api";
 import VenueCard from "@/components/VenueCard";
 import TierBadge from "@/components/TierBadge";
 import PartyGauge from "@/components/PartyGauge";
@@ -132,14 +132,20 @@ export default function SchoolPage() {
   const id = params.id as string;
   const [school, setSchool] = useState<School | null>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [fraternities, setFraternities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const setRef = useFadeIn();
 
   const fetchData = useCallback(async (schoolId: string) => {
     try {
-      const [s, v] = await Promise.all([getSchool(schoolId), getSchoolVenues(schoolId)]);
+      const [s, v, f] = await Promise.all([
+        getSchool(schoolId),
+        getSchoolVenues(schoolId),
+        getSchoolFraternities(schoolId),
+      ]);
       setSchool(s);
       setVenues(v.data || []);
+      setFraternities(f || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -248,10 +254,10 @@ export default function SchoolPage() {
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-        {/* Info Grid + Mini Map */}
+        {/* Info Grid */}
         <div
           ref={setRef(0)}
-          className="fade-in-section grid grid-cols-1 md:grid-cols-3 gap-4"
+          className="fade-in-section grid grid-cols-1 md:grid-cols-2 gap-4"
         >
           {/* Address Card */}
           <div className="bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/30 rounded-xl p-4 hover:border-violet-500/20 hover:shadow-lg hover:shadow-violet-500/5 transition-all">
@@ -266,6 +272,7 @@ export default function SchoolPage() {
             </p>
             <p className="text-sm text-zinc-400">
               {school.city}, {school.state} {school.zip}
+              {school.county && <span className="text-zinc-500"> &middot; {school.county}</span>}
             </p>
           </div>
 
@@ -289,19 +296,6 @@ export default function SchoolPage() {
             ) : (
               <p className="text-sm text-zinc-500">Not available</p>
             )}
-          </div>
-
-          {/* County Card */}
-          <div className="bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/30 rounded-xl p-4 hover:border-violet-500/20 hover:shadow-lg hover:shadow-violet-500/5 transition-all">
-            <div className="flex items-center gap-2 mb-2">
-              <Building2 size={16} className="text-zinc-400" />
-              <span className="text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                County
-              </span>
-            </div>
-            <p className="text-sm text-white">
-              {school.county || "Not available"}
-            </p>
           </div>
         </div>
 
@@ -328,8 +322,35 @@ export default function SchoolPage() {
           </div>
         )}
 
+        {/* Greek Life Section */}
+        {fraternities.length > 0 && (
+          <div ref={setRef(3)} className="fade-in-section">
+            <div className="flex items-center gap-2.5 mb-4">
+              <Users size={20} className="text-blue-400" />
+              <h2 className="text-xl font-bold text-white">
+                Greek Life
+                <span className="text-zinc-500 font-normal ml-2 text-base">
+                  ({fraternities.length})
+                </span>
+              </h2>
+            </div>
+            <div className="bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/30 rounded-2xl p-5">
+              <div className="flex flex-wrap gap-2">
+                {fraternities.map((name) => (
+                  <span
+                    key={name}
+                    className="inline-flex px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-500/8 text-blue-300 border border-blue-500/15 hover:bg-blue-500/15 transition-colors"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Venues Section */}
-        <div ref={setRef(3)} className="fade-in-section">
+        <div ref={setRef(4)} className="fade-in-section">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-xl font-bold text-white">
               Venues & Party Spots

@@ -23,6 +23,7 @@ type School struct {
 
 	// Computed fields
 	VenueCount int     `json:"venue_count"`
+	FratCount  int     `json:"frat_count"`
 	AvgRating  float64 `json:"avg_rating,omitempty"`
 }
 

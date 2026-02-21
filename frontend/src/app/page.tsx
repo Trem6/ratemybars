@@ -48,7 +48,7 @@ export default function Home() {
       <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} showTwoYear={showTwoYear} />
 
       {/* Search overlay */}
-      <div className="absolute top-4 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto z-30">
+      <div className="absolute top-4 left-4 right-4 sm:left-[10%] sm:right-[10%] z-30 flex justify-center">
         <SearchBar
           onSchoolSelect={handleSchoolSelect}
           showTwoYear={showTwoYear}

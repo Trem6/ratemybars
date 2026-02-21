@@ -78,6 +78,7 @@ export interface School {
   county?: string;
   locale?: number;
   venue_count: number;
+  frat_count: number;
   avg_rating?: number;
 }
 
@@ -162,6 +163,9 @@ export const getSchoolVenues = (id: string, page = 1, limit = 20) =>
   apiFetch<PaginatedResponse<Venue>>(`/api/schools/${id}/venues`, {
     params: { page: String(page), limit: String(limit) },
   });
+
+export const getSchoolFraternities = (id: string) =>
+  apiFetch<string[]>(`/api/schools/${id}/fraternities`);
 
 export const getStates = () =>
   apiFetch<string[]>("/api/schools/states");

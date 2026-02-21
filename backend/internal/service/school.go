@@ -286,7 +286,7 @@ func (s *SchoolService) UpdateVenueCounts(venueCounts map[string]int) {
 	}
 }
 
-// UpdateVenueRatings updates venue avg ratings via a callback.
+// UpdateSchoolRatings updates venue avg ratings via a callback.
 func (s *SchoolService) UpdateSchoolRatings(schoolAvgs map[string]float64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -295,5 +295,15 @@ func (s *SchoolService) UpdateSchoolRatings(schoolAvgs map[string]float64) {
 		if avg, ok := schoolAvgs[s.schools[i].ID]; ok {
 			s.schools[i].AvgRating = avg
 		}
+	}
+}
+
+// UpdateFratCounts updates each school's FratCount using a lookup function.
+func (s *SchoolService) UpdateFratCounts(countFn func(string) int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.schools {
+		s.schools[i].FratCount = countFn(s.schools[i].ID)
 	}
 }

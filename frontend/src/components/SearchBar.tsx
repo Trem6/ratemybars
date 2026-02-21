@@ -95,7 +95,7 @@ export default function SearchBar({ onSchoolSelect, onFilterChange, showTwoYear 
   };
 
   return (
-    <div className="relative w-full max-w-2xl" ref={dropdownRef}>
+    <div className="relative w-full max-w-5xl" ref={dropdownRef}>
       {/* Search Input */}
       <div className="relative flex items-center">
         <Search size={20} className="absolute left-4 text-zinc-500" />

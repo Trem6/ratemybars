@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { X, MapPin, Globe, Star, ChevronRight, ExternalLink } from "lucide-react";
+import { X, MapPin, Globe, Star, ChevronRight, ExternalLink, Users } from "lucide-react";
 import Link from "next/link";
-import { getSchool, getSchoolVenues, type School, type Venue } from "@/lib/api";
+import { getSchool, getSchoolVenues, getSchoolFraternities, type School, type Venue } from "@/lib/api";
 import { useToast } from "@/lib/toast-context";
 import { SchoolPanelSkeleton } from "./Skeleton";
 import VenueCard from "./VenueCard";
-import TierBadge, { TierTag } from "./TierBadge";
+import { TierTag } from "./TierBadge";
 import PartyGauge from "./PartyGauge";
 
 interface SchoolPanelProps {
@@ -18,17 +18,20 @@ interface SchoolPanelProps {
 export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
   const [school, setSchool] = useState<School | null>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [fraternities, setFraternities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const { showToast } = useToast();
 
   const fetchData = useCallback(async (id: string) => {
     try {
-      const [s, v] = await Promise.all([
+      const [s, v, f] = await Promise.all([
         getSchool(id),
         getSchoolVenues(id),
+        getSchoolFraternities(id),
       ]);
       setSchool(s);
       setVenues(v.data || []);
+      setFraternities(f || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -45,6 +48,9 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
   }
 
   if (!school) return null;
+
+  const displayVenues = venues.slice(0, 3);
+  const hasMoreVenues = venues.length > 3;
 
   return (
     <div className="fixed right-0 top-14 bottom-0 w-full sm:w-[480px] bg-zinc-950/90 backdrop-blur-2xl border-l border-zinc-700/30 z-40 overflow-y-auto animate-slide-in">
@@ -77,16 +83,16 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
         </div>
       </div>
 
-      <div className="px-5 py-5 space-y-5">
-        {/* Details */}
-        <div className="space-y-2.5">
-          <div className="flex items-start gap-2.5 text-sm text-zinc-400">
-            <MapPin size={15} className="mt-0.5 shrink-0 text-zinc-500" />
-            <span>{school.address}, {school.city}, {school.state} {school.zip}</span>
+      <div className="px-5 py-4 space-y-4">
+        {/* Compact Details */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2 text-xs text-zinc-400">
+            <MapPin size={12} className="shrink-0 text-zinc-500" />
+            <span className="truncate">{school.city}, {school.state} {school.zip}</span>
           </div>
           {school.website && (
-            <div className="flex items-center gap-2.5 text-sm">
-              <Globe size={15} className="text-zinc-500 shrink-0" />
+            <div className="flex items-center gap-2 text-xs">
+              <Globe size={12} className="text-zinc-500 shrink-0" />
               <a
                 href={school.website.startsWith("http") ? school.website : `https://${school.website}`}
                 target="_blank"
@@ -97,30 +103,43 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
               </a>
             </div>
           )}
-          {school.county && (
-            <p className="text-xs text-zinc-500 ml-[27px]">{school.county}</p>
-          )}
         </div>
 
-        {/* Party Score + Tier — centered */}
-        <div className="flex flex-col items-center gap-3 py-4 bg-zinc-900/40 rounded-2xl border border-zinc-800/40">
-          <PartyGauge venueCount={school.venue_count} avgRating={school.avg_rating || 0} />
-          <TierBadge venueCount={school.venue_count} avgRating={school.avg_rating || 0} size="sm" />
+        {/* Compact Party Score */}
+        <div className="flex items-center justify-center py-3 bg-zinc-900/40 rounded-xl border border-zinc-800/40">
+          <PartyGauge venueCount={school.venue_count} avgRating={school.avg_rating || 0} size="sm" />
         </div>
 
-        {/* View Full Page Link */}
-        <Link
-          href={`/school/${schoolId}`}
-          className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-semibold text-violet-400 hover:text-white border border-zinc-700/30 hover:border-violet-500/40 hover:bg-violet-500/10 transition-all"
-        >
-          <ExternalLink size={14} />
-          View Full Page
-        </Link>
+        {/* Greek Life Section */}
+        {fraternities.length > 0 && (
+          <>
+            <div className="h-px bg-zinc-800/60" />
+            <div>
+              <div className="flex items-center gap-2 mb-2.5">
+                <Users size={14} className="text-blue-400" />
+                <h3 className="text-sm font-semibold text-white">
+                  Greek Life
+                  <span className="text-zinc-500 font-normal ml-1.5">({fraternities.length})</span>
+                </h3>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {fraternities.map((name) => (
+                  <span
+                    key={name}
+                    className="inline-flex px-2.5 py-1 rounded-lg text-xs font-medium bg-blue-500/8 text-blue-300 border border-blue-500/15 hover:bg-blue-500/15 transition-colors"
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Divider */}
         <div className="h-px bg-zinc-800/60" />
 
-        {/* Venues Section */}
+        {/* Venues Section — show top 3 */}
         <div>
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-semibold text-white">
@@ -139,25 +158,43 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
           </div>
 
           {venues.length === 0 ? (
-            <div className="text-center py-10 bg-zinc-900/40 rounded-2xl border border-zinc-800/40">
-              <Star size={28} className="mx-auto text-zinc-700 mb-3" />
-              <p className="text-zinc-400 text-sm font-medium">No venues yet</p>
+            <div className="text-center py-8 bg-zinc-900/40 rounded-xl border border-zinc-800/40">
+              <Star size={24} className="mx-auto text-zinc-700 mb-2" />
+              <p className="text-zinc-400 text-sm">No venues yet</p>
               <Link
                 href={`/submit?school=${schoolId}`}
                 onClick={() => showToast("Be a trailblazer! Add the first venue.", "success")}
-                className="inline-flex mt-2 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                className="inline-flex mt-1.5 text-xs text-violet-400 hover:text-violet-300 transition-colors"
               >
                 Be the first to add one
               </Link>
             </div>
           ) : (
             <div className="space-y-2">
-              {venues.map((venue) => (
+              {displayVenues.map((venue) => (
                 <VenueCard key={venue.id} venue={venue} compact />
               ))}
+              {hasMoreVenues && (
+                <Link
+                  href={`/school/${schoolId}`}
+                  className="flex items-center justify-center gap-1.5 w-full py-2.5 rounded-xl text-xs font-medium text-zinc-400 hover:text-white border border-zinc-800/40 hover:border-zinc-700/60 hover:bg-zinc-900/40 transition-all"
+                >
+                  See All {venues.length} Venues
+                  <ChevronRight size={12} />
+                </Link>
+              )}
             </div>
           )}
         </div>
+
+        {/* View Full Page */}
+        <Link
+          href={`/school/${schoolId}`}
+          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl text-sm font-semibold text-violet-400 hover:text-white border border-zinc-700/30 hover:border-violet-500/40 hover:bg-violet-500/10 transition-all"
+        >
+          <ExternalLink size={14} />
+          View Full Page
+        </Link>
       </div>
     </div>
   );
