@@ -243,7 +243,7 @@ export default function SchoolPage() {
                   {isPublic ? "Public" : "Private Non-Profit"}
                 </span>
                 <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-zinc-800/80 text-zinc-300 border border-zinc-700/30">
-                  4-Year Institution
+                  {school.iclevel === 2 ? "2-Year Institution" : "4-Year Institution"}
                 </span>
               </div>
             </div>
