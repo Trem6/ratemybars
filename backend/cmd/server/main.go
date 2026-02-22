@@ -174,7 +174,7 @@ func main() {
 	// Initialize handlers
 	schoolHandler := handler.NewSchoolHandler(schoolSvc)
 	venueHandler := handler.NewVenueHandler(venueSvc)
-	ratingHandler := handler.NewRatingHandler(ratingSvc)
+	ratingHandler := handler.NewRatingHandler(ratingSvc, venueSvc, schoolSvc)
 	authHandler := handler.NewAuthHandler(authSvc)
 	fratHandler := handler.NewFraternityHandler(fratSvc, fratRatingSvc)
 
@@ -218,6 +218,7 @@ func main() {
 			r.Get("/schools/{id}", schoolHandler.GetByID)
 			r.Get("/schools/{id}/venues", venueHandler.ListBySchool)
 			r.Get("/schools/{id}/fraternities", fratHandler.GetBySchool)
+			r.Get("/schools/{id}/ratings", ratingHandler.ListBySchool)
 
 			// Fraternity routes
 			r.Get("/fraternities", fratHandler.ListAll)
@@ -278,7 +279,7 @@ func main() {
 		})
 	})
 
-	log.Printf("RateMyBars API starting on :%s", port)
+	log.Printf("RateMyCollegeParty API starting on :%s", port)
 	log.Printf("Frontend CORS origin: %s", frontendURL)
 	if err := http.ListenAndServe(":"+port, r); err != nil {
 		log.Fatal(err)

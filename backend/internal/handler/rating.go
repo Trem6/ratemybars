@@ -11,11 +11,13 @@ import (
 
 // RatingHandler handles rating-related HTTP requests.
 type RatingHandler struct {
-	svc *service.RatingService
+	svc       *service.RatingService
+	venueSvc  *service.VenueService
+	schoolSvc *service.SchoolService
 }
 
-func NewRatingHandler(svc *service.RatingService) *RatingHandler {
-	return &RatingHandler{svc: svc}
+func NewRatingHandler(svc *service.RatingService, venueSvc *service.VenueService, schoolSvc *service.SchoolService) *RatingHandler {
+	return &RatingHandler{svc: svc, venueSvc: venueSvc, schoolSvc: schoolSvc}
 }
 
 // Create handles POST /api/ratings
@@ -28,13 +30,20 @@ func (h *RatingHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	rating, err := h.svc.Create(r.Context(), req)
 	if err != nil {
-		// Distinguish between validation errors and server errors
 		status := http.StatusBadRequest
 		if err.Error() == "authentication required" {
 			status = http.StatusUnauthorized
 		}
 		writeError(w, status, err.Error())
 		return
+	}
+
+	avg, count := h.svc.GetVenueStats(req.VenueID)
+	schoolID := h.venueSvc.UpdateSingleVenueStats(req.VenueID, avg, count)
+
+	if schoolID != "" {
+		schoolAvg := h.venueSvc.GetSchoolAvgRating(schoolID)
+		h.schoolSvc.UpdateSingleSchoolRating(schoolID, schoolAvg)
 	}
 
 	writeJSON(w, http.StatusCreated, rating)
@@ -48,6 +57,34 @@ func (h *RatingHandler) ListByVenue(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	writeJSON(w, http.StatusOK, ratings)
+}
+
+// ListBySchool handles GET /api/schools/{id}/ratings — returns recent reviews across all venues at a school.
+func (h *RatingHandler) ListBySchool(w http.ResponseWriter, r *http.Request) {
+	schoolID := chi.URLParam(r, "id")
+
+	venueIDs := h.venueSvc.GetVenueIDsBySchool(schoolID)
+	ratings := h.svc.ListByVenues(venueIDs)
+
+	if ratings == nil {
+		ratings = []model.Rating{}
+	}
+
+	// Sort by most recent first (in-place, ratings is a copy)
+	for i := 0; i < len(ratings); i++ {
+		for j := i + 1; j < len(ratings); j++ {
+			if ratings[j].CreatedAt.After(ratings[i].CreatedAt) {
+				ratings[i], ratings[j] = ratings[j], ratings[i]
+			}
+		}
+	}
+
+	// Limit to 20 most recent
+	if len(ratings) > 20 {
+		ratings = ratings[:20]
 	}
 
 	writeJSON(w, http.StatusOK, ratings)

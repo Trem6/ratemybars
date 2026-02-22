@@ -298,6 +298,19 @@ func (s *SchoolService) UpdateSchoolRatings(schoolAvgs map[string]float64) {
 	}
 }
 
+// UpdateSingleSchoolRating updates the avg_rating for a single school.
+func (s *SchoolService) UpdateSingleSchoolRating(schoolID string, avgRating float64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.schools {
+		if s.schools[i].ID == schoolID {
+			s.schools[i].AvgRating = avgRating
+			return
+		}
+	}
+}
+
 // UpdateFratCounts updates each school's FratCount using a lookup function.
 func (s *SchoolService) UpdateFratCounts(countFn func(string) int) {
 	s.mu.Lock()

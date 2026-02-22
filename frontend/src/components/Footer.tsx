@@ -14,7 +14,7 @@ export default function Footer() {
                 R
               </div>
               <span className="text-base font-bold text-white tracking-tight">
-                Rate<span className="text-violet-400">My</span>Bars
+                Rate<span className="text-violet-400">My</span>CollegeParty
               </span>
             </div>
             <p className="text-zinc-500 text-sm leading-relaxed max-w-xs">
@@ -74,7 +74,7 @@ export default function Footer() {
         {/* Bottom */}
         <div className="mt-8 pt-6 border-t border-zinc-800/50 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs text-zinc-600">
-            &copy; {new Date().getFullYear()} RateMyBars. All rights reserved.
+            &copy; {new Date().getFullYear()} RateMyCollegeParty. All rights reserved.
           </p>
           <p className="text-xs text-zinc-700">
             Built with Next.js and Go

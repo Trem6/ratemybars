@@ -226,6 +226,20 @@ func (s *VenueService) GetAllVenues() []model.Venue {
 	return out
 }
 
+// GetVenueIDsBySchool returns all venue IDs for a school.
+func (s *VenueService) GetVenueIDsBySchool(schoolID string) []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var ids []string
+	for _, v := range s.venues {
+		if v.SchoolID == schoolID && v.Verified {
+			ids = append(ids, v.ID)
+		}
+	}
+	return ids
+}
+
 // UpdateRatingStats updates avg_rating and rating_count for all venues.
 func (s *VenueService) UpdateRatingStats(statsFunc func(venueID string) (float64, int)) {
 	s.mu.Lock()
@@ -236,4 +250,38 @@ func (s *VenueService) UpdateRatingStats(statsFunc func(venueID string) (float64
 		s.venues[i].AvgRating = avg
 		s.venues[i].RatingCount = count
 	}
+}
+
+// UpdateSingleVenueStats updates rating stats for a single venue and returns its school_id.
+func (s *VenueService) UpdateSingleVenueStats(venueID string, avgRating float64, ratingCount int) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.venues {
+		if s.venues[i].ID == venueID {
+			s.venues[i].AvgRating = avgRating
+			s.venues[i].RatingCount = ratingCount
+			return s.venues[i].SchoolID
+		}
+	}
+	return ""
+}
+
+// GetSchoolAvgRating computes the average rating across all venues at a school.
+func (s *VenueService) GetSchoolAvgRating(schoolID string) float64 {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var total float64
+	var count int
+	for _, v := range s.venues {
+		if v.SchoolID == schoolID && v.RatingCount > 0 {
+			total += v.AvgRating
+			count++
+		}
+	}
+	if count == 0 {
+		return 0
+	}
+	return total / float64(count)
 }

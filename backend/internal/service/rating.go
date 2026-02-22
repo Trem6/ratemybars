@@ -165,6 +165,25 @@ func (s *RatingService) LoadSeedData(venues []struct{ ID string }) {
 	}
 }
 
+// ListByVenues returns all ratings for a set of venue IDs.
+func (s *RatingService) ListByVenues(venueIDs []string) []model.Rating {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	idSet := make(map[string]bool, len(venueIDs))
+	for _, id := range venueIDs {
+		idSet[id] = true
+	}
+
+	var results []model.Rating
+	for _, r := range s.ratings {
+		if idSet[r.VenueID] {
+			results = append(results, r)
+		}
+	}
+	return results
+}
+
 // GetVenueStats returns average rating and count for a venue.
 func (s *RatingService) GetVenueStats(venueID string) (avgRating float64, count int) {
 	s.mu.RLock()

@@ -173,6 +173,9 @@ export const getSchoolVenues = (id: string, page = 1, limit = 20) =>
 export const getSchoolFraternities = (id: string) =>
   apiFetch<FratWithRating[]>(`/api/schools/${id}/fraternities`);
 
+export const getSchoolRatings = (id: string) =>
+  apiFetch<Rating[]>(`/api/schools/${id}/ratings`);
+
 export const getAllFraternities = () =>
   apiFetch<string[]>("/api/fraternities");
 

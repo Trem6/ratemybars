@@ -57,7 +57,7 @@ export default function SignupPage() {
           </div>
           <h1 className="text-2xl font-bold text-white">Create Account</h1>
           <p className="text-zinc-400 text-sm mt-1">
-            Join RateMyBars and start reviewing
+            Join RateMyCollegeParty and start reviewing
           </p>
         </div>
 

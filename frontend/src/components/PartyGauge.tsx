@@ -11,13 +11,28 @@ function computeScore(venueCount: number, avgRating: number): number {
   return Math.round(venueScore + ratingScore);
 }
 
-/** Get color for score (red -> yellow -> green -> cyan) */
+/** Interpolate between colors based on score 0–100 */
 function getScoreColor(score: number): string {
-  if (score >= 80) return "#22d3ee"; // cyan
-  if (score >= 60) return "#4ade80"; // green
-  if (score >= 40) return "#facc15"; // yellow
-  if (score >= 20) return "#fb923c"; // orange
-  return "#ef4444"; // red
+  const stops: [number, [number, number, number]][] = [
+    [0, [239, 68, 68]],   // red
+    [25, [251, 146, 60]],  // orange
+    [50, [250, 204, 21]],  // yellow
+    [75, [74, 222, 128]],  // green
+    [100, [34, 211, 238]], // cyan
+  ];
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    const [startScore, startColor] = stops[i];
+    const [endScore, endColor] = stops[i + 1];
+    if (score <= endScore) {
+      const t = (score - startScore) / (endScore - startScore);
+      const r = Math.round(startColor[0] + (endColor[0] - startColor[0]) * t);
+      const g = Math.round(startColor[1] + (endColor[1] - startColor[1]) * t);
+      const b = Math.round(startColor[2] + (endColor[2] - startColor[2]) * t);
+      return `rgb(${r},${g},${b})`;
+    }
+  }
+  return "rgb(34,211,238)";
 }
 
 function getScoreLabel(score: number): string {
@@ -99,7 +114,7 @@ export default function PartyGauge({ venueCount, avgRating, size = "md" }: Party
             cy="50"
             r={radius}
             fill="none"
-            stroke="rgba(63,63,70,0.25)"
+            stroke="rgba(63,63,70,0.4)"
             strokeWidth={strokeW}
             strokeDasharray={`${arcLength} ${circumference}`}
             strokeLinecap="round"
@@ -115,7 +130,7 @@ export default function PartyGauge({ venueCount, avgRating, size = "md" }: Party
             strokeDashoffset={dashOffset}
             strokeLinecap="round"
             style={{
-              filter: `drop-shadow(0 0 6px ${color}80)`,
+              filter: `drop-shadow(0 0 8px ${color}) drop-shadow(0 0 3px ${color}60)`,
               transition: "stroke 0.3s",
             }}
           />

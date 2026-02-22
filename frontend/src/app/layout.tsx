@@ -13,7 +13,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "RateMyBars - Rate College Party Venues",
+  title: "RateMyCollegeParty - Rate College Party Venues",
   description:
     "Discover and rate the best bars, nightclubs, frat parties, and party venues near every college in the US.",
   keywords: ["college", "party", "bars", "nightclub", "frat", "rating", "review"],

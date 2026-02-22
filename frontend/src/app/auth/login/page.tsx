@@ -40,7 +40,7 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-bold text-white">Login</h1>
           <p className="text-zinc-400 text-sm mt-1">
-            Welcome back to RateMyBars
+            Welcome back to RateMyCollegeParty
           </p>
         </div>
 
@@ -100,7 +100,7 @@ export default function LoginPage() {
         </p>
 
         <p className="text-center text-zinc-600 text-xs mt-4">
-          RateMyBars is designed for and targeted to U.S. audiences and is governed by and operated in accordance with U.S. laws.
+          RateMyCollegeParty is designed for and targeted to U.S. audiences and is governed by and operated in accordance with U.S. laws.
         </p>
       </div>
     </div>

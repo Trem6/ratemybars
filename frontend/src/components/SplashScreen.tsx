@@ -71,7 +71,7 @@ export default function SplashScreen() {
             animation: visible ? "splashTextIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both" : "none",
           }}
         >
-          Rate<span className="text-violet-400">My</span>Bars
+          Rate<span className="text-violet-400">My</span>CollegeParty
         </div>
 
         {/* Tagline */}
