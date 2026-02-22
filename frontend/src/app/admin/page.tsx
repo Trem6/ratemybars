@@ -42,6 +42,22 @@ export default function AdminPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
 
+  // Fraternity management state (must be before any early returns)
+  const [glSchoolQuery, setGlSchoolQuery] = useState("");
+  const [glSchoolResults, setGlSchoolResults] = useState<School[]>([]);
+  const [glSelectedSchool, setGlSelectedSchool] = useState<School | null>(null);
+  const [glFrats, setGlFrats] = useState<FratWithRating[]>([]);
+  const [glAllFrats, setGlAllFrats] = useState<string[]>([]);
+  const [glNewFrat, setGlNewFrat] = useState("");
+  const [, setGlFratSuggestions] = useState<string[]>([]);
+  const [glShowSuggestions, setGlShowSuggestions] = useState(false);
+  const glSuggestRef = useRef<HTMLDivElement>(null);
+
+  // Manage venues state (must be before any early returns)
+  const [mvQuery, setMvQuery] = useState("");
+  const [mvResults, setMvResults] = useState<Venue[]>([]);
+  const [mvSearching, setMvSearching] = useState(false);
+
   const fetchPending = useCallback(async () => {
     try {
       const data = await getPendingVenues();
@@ -69,6 +85,53 @@ export default function AdminPage() {
     }
   }, [user, fetchPending, fetchUsers]);
 
+  useEffect(() => {
+    if (tab === "fraternities" && glAllFrats.length === 0) {
+      getAllFraternities().then(setGlAllFrats).catch(console.error);
+    }
+  }, [tab, glAllFrats.length]);
+
+  useEffect(() => {
+    if (glSchoolQuery.length < 2) { setGlSchoolResults([]); return; }
+    const t = setTimeout(async () => {
+      try {
+        const res = await searchSchools({ q: glSchoolQuery, limit: "5", page: "1" });
+        setGlSchoolResults(res.data || []);
+      } catch { setGlSchoolResults([]); }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [glSchoolQuery]);
+
+  useEffect(() => {
+    if (!glSelectedSchool) return;
+    getSchoolFraternities(glSelectedSchool.id).then(setGlFrats).catch(console.error);
+  }, [glSelectedSchool]);
+
+  useEffect(() => {
+    if (!glShowSuggestions) return;
+    const handler = (e: MouseEvent) => {
+      if (glSuggestRef.current && !glSuggestRef.current.contains(e.target as Node)) {
+        setGlShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [glShowSuggestions]);
+
+  useEffect(() => {
+    if (tab !== "manage-venues" || mvQuery.length < 2) { setMvResults([]); return; }
+    setMvSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const data = await adminSearchVenues(mvQuery);
+        setMvResults(data || []);
+      } catch { setMvResults([]); }
+      setMvSearching(false);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [mvQuery, tab]);
+
+  // Early returns AFTER all hooks
   if (authLoading || loading) {
     return (
       <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center">
@@ -134,50 +197,6 @@ export default function AdminPage() {
     }
   };
 
-  // Fraternity management state
-  const [glSchoolQuery, setGlSchoolQuery] = useState("");
-  const [glSchoolResults, setGlSchoolResults] = useState<School[]>([]);
-  const [glSelectedSchool, setGlSelectedSchool] = useState<School | null>(null);
-  const [glFrats, setGlFrats] = useState<FratWithRating[]>([]);
-  const [glAllFrats, setGlAllFrats] = useState<string[]>([]);
-  const [glNewFrat, setGlNewFrat] = useState("");
-  const [glFratSuggestions, setGlFratSuggestions] = useState<string[]>([]);
-  const [glShowSuggestions, setGlShowSuggestions] = useState(false);
-  const glSuggestRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (tab === "fraternities" && glAllFrats.length === 0) {
-      getAllFraternities().then(setGlAllFrats).catch(console.error);
-    }
-  }, [tab, glAllFrats.length]);
-
-  useEffect(() => {
-    if (glSchoolQuery.length < 2) { setGlSchoolResults([]); return; }
-    const t = setTimeout(async () => {
-      try {
-        const res = await searchSchools({ q: glSchoolQuery, limit: "5", page: "1" });
-        setGlSchoolResults(res.data || []);
-      } catch { setGlSchoolResults([]); }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [glSchoolQuery]);
-
-  useEffect(() => {
-    if (!glSelectedSchool) return;
-    getSchoolFraternities(glSelectedSchool.id).then(setGlFrats).catch(console.error);
-  }, [glSelectedSchool]);
-
-  useEffect(() => {
-    if (!glShowSuggestions) return;
-    const handler = (e: MouseEvent) => {
-      if (glSuggestRef.current && !glSuggestRef.current.contains(e.target as Node)) {
-        setGlShowSuggestions(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [glShowSuggestions]);
-
   const handleGlSelectSchool = (school: School) => {
     setGlSelectedSchool(school);
     setGlSchoolQuery(school.name);
@@ -217,24 +236,6 @@ export default function AdminPage() {
   const filteredGlSuggestions = glNewFrat
     ? glAllFrats.filter((n) => n.toLowerCase().includes(glNewFrat.toLowerCase())).slice(0, 8)
     : [];
-
-  // Manage venues state
-  const [mvQuery, setMvQuery] = useState("");
-  const [mvResults, setMvResults] = useState<Venue[]>([]);
-  const [mvSearching, setMvSearching] = useState(false);
-
-  useEffect(() => {
-    if (tab !== "manage-venues" || mvQuery.length < 2) { setMvResults([]); return; }
-    setMvSearching(true);
-    const t = setTimeout(async () => {
-      try {
-        const data = await adminSearchVenues(mvQuery);
-        setMvResults(data || []);
-      } catch { setMvResults([]); }
-      setMvSearching(false);
-    }, 300);
-    return () => clearTimeout(t);
-  }, [mvQuery, tab]);
 
   const handleDeleteVenue = async (venueId: string) => {
     if (!confirm("Are you sure you want to permanently delete this venue?")) return;
@@ -461,7 +462,6 @@ export default function AdminPage() {
       {/* Fraternities Tab */}
       {tab === "fraternities" && (
         <div className="space-y-4">
-          {/* School search */}
           <div className="relative">
             <label className="block text-xs text-zinc-400 mb-1.5">Select a School</label>
             <div className="relative">
@@ -497,94 +497,90 @@ export default function AdminPage() {
           </div>
 
           {glSelectedSchool && (
-            <>
-              <div className="p-4 bg-zinc-900/70 border border-zinc-800/50 rounded-xl">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <h3 className="text-white font-semibold text-sm">{glSelectedSchool.name}</h3>
-                    <p className="text-xs text-zinc-500">{glSelectedSchool.city}, {glSelectedSchool.state} &middot; ID: {glSelectedSchool.id}</p>
-                  </div>
-                  <span className="text-xs text-zinc-500">{glFrats.length} fraternities</span>
+            <div className="p-4 bg-zinc-900/70 border border-zinc-800/50 rounded-xl">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-white font-semibold text-sm">{glSelectedSchool.name}</h3>
+                  <p className="text-xs text-zinc-500">{glSelectedSchool.city}, {glSelectedSchool.state} &middot; ID: {glSelectedSchool.id}</p>
                 </div>
-
-                {/* Add fraternity */}
-                <div className="relative mb-3" ref={glSuggestRef}>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={glNewFrat}
-                        onChange={(e) => {
-                          setGlNewFrat(e.target.value);
-                          setGlShowSuggestions(true);
-                        }}
-                        onFocus={() => glNewFrat && setGlShowSuggestions(true)}
-                        placeholder="Fraternity name (e.g. Alpha Phi Alpha)"
-                        className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") { e.preventDefault(); handleGlAddFrat(); }
-                        }}
-                      />
-                      {glShowSuggestions && filteredGlSuggestions.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-32 overflow-y-auto z-50">
-                          {filteredGlSuggestions.map((name) => (
-                            <button
-                              key={name}
-                              onClick={() => {
-                                setGlNewFrat(name);
-                                setGlShowSuggestions(false);
-                              }}
-                              className="w-full px-3 py-1.5 text-left text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
-                            >
-                              {name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={handleGlAddFrat}
-                      disabled={!glNewFrat.trim() || actionLoading === "add-frat"}
-                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors shrink-0"
-                    >
-                      <Plus size={14} />
-                      Add
-                    </button>
-                  </div>
-                </div>
-
-                {/* Existing fraternities */}
-                {glFrats.length === 0 ? (
-                  <p className="text-zinc-600 text-sm text-center py-4">No fraternities at this school yet.</p>
-                ) : (
-                  <div className="space-y-1">
-                    {glFrats.map((f) => (
-                      <div
-                        key={f.name}
-                        className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-zinc-800/70 transition-colors group"
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <span className="text-sm text-zinc-300 truncate">{f.name}</span>
-                          {f.rating_count > 0 && (
-                            <span className="text-[10px] text-zinc-500 shrink-0">
-                              {f.avg_rating.toFixed(1)} ({f.rating_count})
-                            </span>
-                          )}
-                        </div>
-                        <button
-                          onClick={() => handleGlRemoveFrat(f.name)}
-                          disabled={actionLoading === `rm-${f.name}`}
-                          className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-md bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium transition-all border border-red-600/30 disabled:opacity-50 shrink-0"
-                        >
-                          <Trash2 size={12} />
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <span className="text-xs text-zinc-500">{glFrats.length} fraternities</span>
               </div>
-            </>
+
+              <div className="relative mb-3" ref={glSuggestRef}>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      value={glNewFrat}
+                      onChange={(e) => {
+                        setGlNewFrat(e.target.value);
+                        setGlShowSuggestions(true);
+                      }}
+                      onFocus={() => glNewFrat && setGlShowSuggestions(true)}
+                      placeholder="Fraternity name (e.g. Alpha Phi Alpha)"
+                      className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") { e.preventDefault(); handleGlAddFrat(); }
+                      }}
+                    />
+                    {glShowSuggestions && filteredGlSuggestions.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-32 overflow-y-auto z-50">
+                        {filteredGlSuggestions.map((name) => (
+                          <button
+                            key={name}
+                            onClick={() => {
+                              setGlNewFrat(name);
+                              setGlShowSuggestions(false);
+                            }}
+                            className="w-full px-3 py-1.5 text-left text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+                          >
+                            {name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleGlAddFrat}
+                    disabled={!glNewFrat.trim() || actionLoading === "add-frat"}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium transition-colors shrink-0"
+                  >
+                    <Plus size={14} />
+                    Add
+                  </button>
+                </div>
+              </div>
+
+              {glFrats.length === 0 ? (
+                <p className="text-zinc-600 text-sm text-center py-4">No fraternities at this school yet.</p>
+              ) : (
+                <div className="space-y-1">
+                  {glFrats.map((f) => (
+                    <div
+                      key={f.name}
+                      className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg hover:bg-zinc-800/70 transition-colors group"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <span className="text-sm text-zinc-300 truncate">{f.name}</span>
+                        {f.rating_count > 0 && (
+                          <span className="text-[10px] text-zinc-500 shrink-0">
+                            {f.avg_rating.toFixed(1)} ({f.rating_count})
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleGlRemoveFrat(f.name)}
+                        disabled={actionLoading === `rm-${f.name}`}
+                        className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-md bg-red-600/20 hover:bg-red-600/30 text-red-400 text-xs font-medium transition-all border border-red-600/30 disabled:opacity-50 shrink-0"
+                      >
+                        <Trash2 size={12} />
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {!glSelectedSchool && (
