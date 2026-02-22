@@ -121,7 +121,7 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
           <PartyGauge venueCount={school.venue_count} avgRating={school.avg_rating || 0} size="sm" />
         </div>
 
-        {/* Greek Life Section */}
+        {/* Fraternities Section */}
         {fraternities.length > 0 && (
           <>
             <div className="h-px bg-zinc-800/60" />
@@ -130,7 +130,7 @@ export default function SchoolPanel({ schoolId, onClose }: SchoolPanelProps) {
                 <div className="flex items-center gap-2">
                   <Users size={14} className="text-blue-400" />
                   <h3 className="text-sm font-semibold text-white">
-                    Greek Life
+                    Fraternities
                     <span className="text-zinc-500 font-normal ml-1.5">({fraternities.length})</span>
                   </h3>
                 </div>

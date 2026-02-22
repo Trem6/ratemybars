@@ -267,6 +267,23 @@ func (s *VenueService) UpdateSingleVenueStats(venueID string, avgRating float64,
 	return ""
 }
 
+// GetRecent returns the N most recently created verified venues.
+func (s *VenueService) GetRecent(limit int) []model.Venue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var verified []model.Venue
+	for i := len(s.venues) - 1; i >= 0; i-- {
+		if s.venues[i].Verified {
+			verified = append(verified, s.venues[i])
+			if len(verified) >= limit {
+				break
+			}
+		}
+	}
+	return verified
+}
+
 // GetSchoolAvgRating computes the average rating across all venues at a school.
 func (s *VenueService) GetSchoolAvgRating(schoolID string) float64 {
 	s.mu.RLock()

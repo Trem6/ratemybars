@@ -238,6 +238,78 @@ func main() {
 				})
 			})
 
+			// Activity feed
+			r.Get("/activity/recent", func(w http.ResponseWriter, r *http.Request) {
+				type activityItem struct {
+					Type      string `json:"type"`
+					Text      string `json:"text"`
+					Timestamp string `json:"timestamp"`
+				}
+
+				var items []activityItem
+
+				recentRatings := ratingSvc.GetRecent(15)
+				for _, rating := range recentRatings {
+					v, err := venueSvc.GetByID(r.Context(), rating.VenueID)
+					venueName := "a venue"
+					schoolName := ""
+					if err == nil {
+						venueName = v.Name
+						if s, err2 := schoolSvc.GetByID(r.Context(), v.SchoolID); err2 == nil {
+							schoolName = s.Name
+						}
+					}
+					text := fmt.Sprintf("%s rated %s", rating.AuthorName, venueName)
+					if schoolName != "" {
+						text += " at " + schoolName
+					}
+					text += fmt.Sprintf(" %.1f stars", rating.Score)
+					items = append(items, activityItem{
+						Type:      "rating",
+						Text:      text,
+						Timestamp: rating.CreatedAt.Format(time.RFC3339),
+					})
+				}
+
+				recentVenues := venueSvc.GetRecent(10)
+				for _, venue := range recentVenues {
+					schoolName := ""
+					if s, err := schoolSvc.GetByID(r.Context(), venue.SchoolID); err == nil {
+						schoolName = s.Name
+					}
+					text := "New venue added: " + venue.Name
+					if schoolName != "" {
+						text += " near " + schoolName
+					}
+					items = append(items, activityItem{
+						Type:      "venue",
+						Text:      text,
+						Timestamp: venue.CreatedAt.Format(time.RFC3339),
+					})
+				}
+
+				recentFratRatings := fratRatingSvc.GetRecent(10)
+				for _, fr := range recentFratRatings {
+					schoolName := ""
+					if s, err := schoolSvc.GetByID(r.Context(), fr.SchoolID); err == nil {
+						schoolName = s.Name
+					}
+					text := fmt.Sprintf("%s rated %s", fr.AuthorName, fr.FratName)
+					if schoolName != "" {
+						text += " at " + schoolName
+					}
+					text += fmt.Sprintf(" %.1f", fr.Score)
+					items = append(items, activityItem{
+						Type:      "frat_rating",
+						Text:      text,
+						Timestamp: fr.CreatedAt.Format(time.RFC3339),
+					})
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(items)
+			})
+
 			// Leaderboard
 			r.Get("/leaderboard/schools", func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")

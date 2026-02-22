@@ -29,7 +29,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-type Tab = "venues" | "users" | "greeklife";
+type Tab = "venues" | "users" | "fraternities";
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -132,7 +132,7 @@ export default function AdminPage() {
     }
   };
 
-  // Greek Life management state
+  // Fraternity management state
   const [glSchoolQuery, setGlSchoolQuery] = useState("");
   const [glSchoolResults, setGlSchoolResults] = useState<School[]>([]);
   const [glSelectedSchool, setGlSelectedSchool] = useState<School | null>(null);
@@ -144,7 +144,7 @@ export default function AdminPage() {
   const glSuggestRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (tab === "greeklife" && glAllFrats.length === 0) {
+    if (tab === "fraternities" && glAllFrats.length === 0) {
       getAllFraternities().then(setGlAllFrats).catch(console.error);
     }
   }, [tab, glAllFrats.length]);
@@ -233,7 +233,7 @@ export default function AdminPage() {
         <div>
           <h1 className="text-2xl font-bold text-white">Admin Panel</h1>
           <p className="text-zinc-400 text-sm">
-            Manage venues, users &amp; Greek life
+            Manage venues, users &amp; fraternities
           </p>
         </div>
       </div>
@@ -269,15 +269,15 @@ export default function AdminPage() {
           <span className="ml-auto text-xs text-zinc-500">{users.length}</span>
         </button>
         <button
-          onClick={() => setTab("greeklife")}
+          onClick={() => setTab("fraternities")}
           className={`flex items-center gap-2 flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            tab === "greeklife"
+            tab === "fraternities"
               ? "bg-zinc-800 text-white"
               : "text-zinc-400 hover:text-zinc-300"
           }`}
         >
           <Shield size={16} />
-          Greek Life
+          Fraternities
         </button>
       </div>
 
@@ -411,8 +411,8 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Greek Life Tab */}
-      {tab === "greeklife" && (
+      {/* Fraternities Tab */}
+      {tab === "fraternities" && (
         <div className="space-y-4">
           {/* School search */}
           <div className="relative">
@@ -543,7 +543,7 @@ export default function AdminPage() {
           {!glSelectedSchool && (
             <div className="text-center py-16 bg-zinc-900/50 rounded-2xl border border-zinc-800/50">
               <Shield size={48} className="text-zinc-700 mx-auto mb-4" />
-              <h2 className="text-lg font-semibold text-zinc-400 mb-1">Manage Greek Life</h2>
+              <h2 className="text-lg font-semibold text-zinc-400 mb-1">Manage Fraternities</h2>
               <p className="text-zinc-500 text-sm">Search for a school above to add or remove fraternities.</p>
             </div>
           )}

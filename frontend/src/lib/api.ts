@@ -207,6 +207,15 @@ export const getLeaderboardSchools = () =>
 export const getLeaderboardUsers = () =>
   apiFetch<LeaderboardUser[]>("/api/leaderboard/users");
 
+export interface ActivityItem {
+  type: "rating" | "venue" | "frat_rating";
+  text: string;
+  timestamp: string;
+}
+
+export const getRecentActivity = () =>
+  apiFetch<ActivityItem[]>("/api/activity/recent");
+
 export const getStates = () =>
   apiFetch<string[]>("/api/schools/states");
 

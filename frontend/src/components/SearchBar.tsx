@@ -236,7 +236,7 @@ export default function SearchBar({
             <label className="block text-xs text-zinc-400 mb-1">
               <span className="flex items-center gap-1">
                 <Users size={11} />
-                Greek Life Filter
+                Fraternity Filter
               </span>
             </label>
             {selectedFrat ? (

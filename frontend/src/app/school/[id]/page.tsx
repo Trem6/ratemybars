@@ -385,7 +385,7 @@ export default function SchoolPage() {
           />
           <QuickStat
             icon={<Users size={18} className="text-blue-400" />}
-            label="Greek Life"
+            label="Fraternities"
             value={fraternities.length}
             color="bg-blue-500/10"
           />
@@ -504,13 +504,13 @@ export default function SchoolPage() {
           </div>
         )}
 
-        {/* Greek Life Section */}
+        {/* Fraternities Section */}
         {fraternities.length > 0 && (
           <div ref={setRef(5)} className="fade-in-section">
             <div className="flex items-center gap-2.5 mb-4">
               <Users size={20} className="text-blue-400" />
               <h2 className="text-xl font-bold text-white">
-                Greek Life
+                Fraternities
                 <span className="text-zinc-500 font-normal ml-2 text-base">
                   ({fraternities.length})
                 </span>

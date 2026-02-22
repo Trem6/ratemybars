@@ -1,67 +1,87 @@
 "use client";
 
-import { useMemo } from "react";
-import { Star, Plus, TrendingUp } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Star, Plus, Flame } from "lucide-react";
+import { getRecentActivity, type ActivityItem } from "@/lib/api";
 
-interface TickerItem {
-  icon: "star" | "plus" | "trending";
-  text: string;
-  color: string;
-}
-
-const ACTIVITY_POOL: TickerItem[] = [
-  { icon: "star", text: "PartyPete rated The Boot at Tulane 4.5 stars", color: "#fbbf24" },
-  { icon: "plus", text: "New venue added: Rick's American Cafe near UMich", color: "#4ade80" },
-  { icon: "star", text: "CollegeFun rated Salty Dog Saloon at UF 5.0 stars", color: "#fbbf24" },
-  { icon: "trending", text: "Arizona State trending -- 3 new ratings today", color: "#22d3ee" },
-  { icon: "star", text: "NightOwl rated Fat Daddy's at WVU 4.0 stars", color: "#fbbf24" },
-  { icon: "plus", text: "New venue added: State Street Brats near UW-Madison", color: "#4ade80" },
-  { icon: "star", text: "GameDayKing rated Whiskey Row at ASU 4.5 stars", color: "#fbbf24" },
-  { icon: "trending", text: "Penn State climbing ranks -- now A-Tier", color: "#22d3ee" },
-  { icon: "star", text: "BarCrawler rated Georgia Theatre at UGA 5.0 stars", color: "#fbbf24" },
-  { icon: "plus", text: "New venue added: Kilroy's on Kirkwood near IU", color: "#4ade80" },
-  { icon: "star", text: "SocialScene rated The Sink at CU Boulder 4.0 stars", color: "#fbbf24" },
-  { icon: "trending", text: "Ohio State is heating up -- 5 venues rated this week", color: "#22d3ee" },
-  { icon: "star", text: "WeekendWarrior rated Chuck's Cafe at Syracuse 3.5 stars", color: "#fbbf24" },
-  { icon: "plus", text: "New venue added: F&M Patio Bar near Tulane", color: "#4ade80" },
-  { icon: "star", text: "TailgatePro rated Cain & Abel's at UT Austin 4.5 stars", color: "#fbbf24" },
-  { icon: "trending", text: "LSU just hit S-Tier -- legendary party scene", color: "#22d3ee" },
+const FALLBACK: ActivityItem[] = [
+  { type: "rating", text: "PartyPete rated The Boot at Tulane 4.5 stars", timestamp: "" },
+  { type: "venue", text: "New venue added: Rick's American Cafe near UMich", timestamp: "" },
+  { type: "rating", text: "CollegeFun rated Salty Dog Saloon at UF 5.0 stars", timestamp: "" },
+  { type: "venue", text: "New venue added: Kilroy's on Kirkwood near IU", timestamp: "" },
+  { type: "rating", text: "GameDayKing rated Whiskey Row at ASU 4.5 stars", timestamp: "" },
+  { type: "frat_rating", text: "NightOwl rated Sigma Chi at Ohio State 4.0", timestamp: "" },
+  { type: "rating", text: "BarCrawler rated Georgia Theatre at UGA 5.0 stars", timestamp: "" },
+  { type: "venue", text: "New venue added: State Street Brats near UW-Madison", timestamp: "" },
 ];
 
-function IconForType({ type, color }: { type: TickerItem["icon"]; color: string }) {
-  const props = { size: 12, style: { color } };
+function timeAgo(ts: string): string {
+  if (!ts) return "";
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function ItemIcon({ type }: { type: ActivityItem["type"] }) {
   switch (type) {
-    case "star":
-      return <Star {...props} fill={color} />;
-    case "plus":
-      return <Plus {...props} />;
-    case "trending":
-      return <TrendingUp {...props} />;
+    case "rating":
+      return <Star size={11} className="text-amber-400" fill="#fbbf24" />;
+    case "venue":
+      return <Plus size={11} className="text-emerald-400" />;
+    case "frat_rating":
+      return <Flame size={11} className="text-orange-400" />;
   }
 }
 
 export default function ActivityTicker() {
-  // Shuffle once on mount for variety
-  const items = useMemo(() => {
-    const shuffled = [...ACTIVITY_POOL].sort(() => Math.random() - 0.5);
-    // Duplicate for seamless loop
-    return [...shuffled, ...shuffled];
+  const [items, setItems] = useState<ActivityItem[]>(FALLBACK);
+
+  useEffect(() => {
+    getRecentActivity()
+      .then((data) => {
+        if (data && data.length > 0) setItems(data);
+      })
+      .catch(() => {});
+
+    const interval = setInterval(() => {
+      getRecentActivity()
+        .then((data) => {
+          if (data && data.length > 0) setItems(data);
+        })
+        .catch(() => {});
+    }, 60_000);
+
+    return () => clearInterval(interval);
   }, []);
+
+  const display = useMemo(() => {
+    const shuffled = [...items].sort(() => Math.random() - 0.5);
+    return [...shuffled, ...shuffled];
+  }, [items]);
 
   return (
     <div className="overflow-hidden relative h-full flex items-center">
-      {/* Fade edges */}
       <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-zinc-950/80 to-transparent z-10 pointer-events-none" />
       <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-zinc-950/80 to-transparent z-10 pointer-events-none" />
 
       <div className="flex animate-ticker whitespace-nowrap">
-        {items.map((item, i) => (
+        {display.map((item, i) => (
           <div
             key={i}
             className="inline-flex items-center gap-1.5 px-3 text-[11px] text-zinc-500 shrink-0"
           >
-            <IconForType type={item.icon} color={item.color} />
+            <ItemIcon type={item.type} />
             <span>{item.text}</span>
+            {item.timestamp && (
+              <>
+                <span className="text-zinc-700 mx-0.5">&middot;</span>
+                <span className="text-zinc-600">{timeAgo(item.timestamp)}</span>
+              </>
+            )}
           </div>
         ))}
       </div>

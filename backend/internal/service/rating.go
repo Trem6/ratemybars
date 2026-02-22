@@ -233,6 +233,22 @@ func (s *RatingService) GetTopContributors(limit int) []map[string]interface{} {
 	return results
 }
 
+// GetRecent returns the N most recent ratings.
+func (s *RatingService) GetRecent(limit int) []model.Rating {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	n := len(s.ratings)
+	if limit <= 0 || limit > n {
+		limit = n
+	}
+	result := make([]model.Rating, limit)
+	for i := 0; i < limit; i++ {
+		result[i] = s.ratings[n-1-i]
+	}
+	return result
+}
+
 // GetVenueStats returns average rating and count for a venue.
 func (s *RatingService) GetVenueStats(venueID string) (avgRating float64, count int) {
 	s.mu.RLock()

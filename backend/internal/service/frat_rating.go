@@ -138,6 +138,22 @@ func (s *FratRatingService) GetSchoolStats(schoolID string) map[string]model.Fra
 	return result
 }
 
+// GetRecent returns the N most recent frat ratings.
+func (s *FratRatingService) GetRecent(limit int) []model.FratRating {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	n := len(s.ratings)
+	if limit <= 0 || limit > n {
+		limit = n
+	}
+	result := make([]model.FratRating, limit)
+	for i := 0; i < limit; i++ {
+		result[i] = s.ratings[n-1-i]
+	}
+	return result
+}
+
 // Count returns the total number of frat ratings.
 func (s *FratRatingService) Count() int {
 	s.mu.RLock()
