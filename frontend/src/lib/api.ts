@@ -116,6 +116,8 @@ export interface Venue {
   verified: boolean;
   avg_rating: number;
   rating_count: number;
+  thumbs_up: number;
+  thumbs_down: number;
 }
 
 export interface Rating {

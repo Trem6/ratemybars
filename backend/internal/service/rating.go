@@ -42,9 +42,9 @@ func (s *RatingService) Create(ctx context.Context, req model.CreateRatingReques
 		return nil, fmt.Errorf("authentication required")
 	}
 
-	// Validate score
-	if req.Score < 1 || req.Score > 5 {
-		return nil, fmt.Errorf("score must be between 1 and 5")
+	// Validate score: thumbs down (1) or thumbs up (5)
+	if req.Score != 1 && req.Score != 5 {
+		return nil, fmt.Errorf("score must be 1 (thumbs down) or 5 (thumbs up)")
 	}
 
 	if req.VenueID == "" {
@@ -122,24 +122,24 @@ func (s *RatingService) LoadSeedData(venues []struct{ ID string }) {
 		Author string
 	}{
 		{5, "Best bar near campus, always a great time!", "PartyGator22"},
-		{4, "Good drinks, gets really packed on weekends", "NightOwl99"},
+		{5, "Good drinks, gets really packed on weekends", "NightOwl99"},
 		{5, "Legendary spot, every student needs to go here", "CollegeLyfe"},
-		{4, "Fun atmosphere, music could be better", "BarHopper23"},
-		{3, "Decent but overpriced drinks", "BudgetDrinker"},
+		{5, "Fun atmosphere, music could be better", "BarHopper23"},
+		{1, "Decent but overpriced drinks", "BudgetDrinker"},
 		{5, "This place is an absolute institution", "SeniorYear26"},
-		{4, "Great vibes on Thursday nights", "ThirstyThursday"},
+		{5, "Great vibes on Thursday nights", "ThirstyThursday"},
 		{5, "10/10 would recommend to any freshman", "CampusGuide"},
-		{3, "Long lines on weekends but worth the wait", "PatientParty"},
-		{4, "Love the outdoor area, perfect for warm nights", "PatioLover"},
+		{1, "Long lines on weekends but worth the wait", "PatientParty"},
+		{5, "Love the outdoor area, perfect for warm nights", "PatioLover"},
 		{5, "The bartenders are amazing and drinks are strong", "MixologyFan"},
-		{4, "My go-to spot every weekend", "Weekender101"},
-		{3, "Good for pregaming, not great for staying late", "PreGameKing"},
+		{5, "My go-to spot every weekend", "Weekender101"},
+		{1, "Good for pregaming, not great for staying late", "PreGameKing"},
 		{5, "Unforgettable memories made here", "Nostalgic26"},
-		{4, "Solid sports bar, great for game day", "TailgateKing"},
-		{4, "Always a good crowd and good energy", "VibeChecker"},
+		{5, "Solid sports bar, great for game day", "TailgateKing"},
+		{5, "Always a good crowd and good energy", "VibeChecker"},
 		{5, "Nothing beats this place on a Friday night", "FridayFanatic"},
-		{3, "It's okay, the hype is a bit much", "RealTalk420"},
-		{4, "Cheap drinks and a fun dance floor", "DanceFloorDiva"},
+		{1, "It's okay, the hype is a bit much", "RealTalk420"},
+		{5, "Cheap drinks and a fun dance floor", "DanceFloorDiva"},
 		{5, "A must-visit if you're in town", "TouristTips"},
 	}
 
@@ -247,6 +247,24 @@ func (s *RatingService) GetRecent(limit int) []model.Rating {
 		result[i] = s.ratings[n-1-i]
 	}
 	return result
+}
+
+// GetVenueThumbs returns thumbs up and thumbs down counts for a venue.
+// Thumbs up = score >= 4, thumbs down = score <= 2.
+func (s *RatingService) GetVenueThumbs(venueID string) (up, down int) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	for _, r := range s.ratings {
+		if r.VenueID == venueID {
+			if r.Score >= 4 {
+				up++
+			} else if r.Score <= 2 {
+				down++
+			}
+		}
+	}
+	return
 }
 
 // GetVenueStats returns average rating and count for a venue.

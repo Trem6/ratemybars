@@ -5,13 +5,13 @@ import { Star, Plus, Flame } from "lucide-react";
 import { getRecentActivity, type ActivityItem } from "@/lib/api";
 
 const FALLBACK: ActivityItem[] = [
-  { type: "rating", text: "PartyPete rated The Boot at Tulane 4.5 stars", timestamp: "" },
+  { type: "rating", text: "PartyPete upvoted The Boot at Tulane", timestamp: "" },
   { type: "venue", text: "New venue added: Rick's American Cafe near UMich", timestamp: "" },
-  { type: "rating", text: "CollegeFun rated Salty Dog Saloon at UF 5.0 stars", timestamp: "" },
+  { type: "rating", text: "CollegeFun upvoted Salty Dog Saloon at UF", timestamp: "" },
   { type: "venue", text: "New venue added: Kilroy's on Kirkwood near IU", timestamp: "" },
-  { type: "rating", text: "GameDayKing rated Whiskey Row at ASU 4.5 stars", timestamp: "" },
+  { type: "rating", text: "GameDayKing upvoted Whiskey Row at ASU", timestamp: "" },
   { type: "frat_rating", text: "NightOwl rated Sigma Chi at Ohio State 4.0", timestamp: "" },
-  { type: "rating", text: "BarCrawler rated Georgia Theatre at UGA 5.0 stars", timestamp: "" },
+  { type: "rating", text: "BarCrawler upvoted Georgia Theatre at UGA", timestamp: "" },
   { type: "venue", text: "New venue added: State Street Brats near UW-Madison", timestamp: "" },
 ];
 

@@ -240,8 +240,11 @@ func (s *VenueService) GetVenueIDsBySchool(schoolID string) []string {
 	return ids
 }
 
-// UpdateRatingStats updates avg_rating and rating_count for all venues.
-func (s *VenueService) UpdateRatingStats(statsFunc func(venueID string) (float64, int)) {
+// ThumbsStatsFunc returns thumbs_up and thumbs_down counts for a venue.
+type ThumbsStatsFunc func(venueID string) (up, down int)
+
+// UpdateRatingStats updates avg_rating, rating_count, and thumbs for all venues.
+func (s *VenueService) UpdateRatingStats(statsFunc func(venueID string) (float64, int), thumbsFunc ThumbsStatsFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -249,11 +252,16 @@ func (s *VenueService) UpdateRatingStats(statsFunc func(venueID string) (float64
 		avg, count := statsFunc(s.venues[i].ID)
 		s.venues[i].AvgRating = avg
 		s.venues[i].RatingCount = count
+		if thumbsFunc != nil {
+			up, down := thumbsFunc(s.venues[i].ID)
+			s.venues[i].ThumbsUp = up
+			s.venues[i].ThumbsDown = down
+		}
 	}
 }
 
 // UpdateSingleVenueStats updates rating stats for a single venue and returns its school_id.
-func (s *VenueService) UpdateSingleVenueStats(venueID string, avgRating float64, ratingCount int) string {
+func (s *VenueService) UpdateSingleVenueStats(venueID string, avgRating float64, ratingCount int, thumbsUp int, thumbsDown int) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -261,6 +269,8 @@ func (s *VenueService) UpdateSingleVenueStats(venueID string, avgRating float64,
 		if s.venues[i].ID == venueID {
 			s.venues[i].AvgRating = avgRating
 			s.venues[i].RatingCount = ratingCount
+			s.venues[i].ThumbsUp = thumbsUp
+			s.venues[i].ThumbsDown = thumbsDown
 			return s.venues[i].SchoolID
 		}
 	}

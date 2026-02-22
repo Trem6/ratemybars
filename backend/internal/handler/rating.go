@@ -39,7 +39,8 @@ func (h *RatingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 
 	avg, count := h.svc.GetVenueStats(req.VenueID)
-	schoolID := h.venueSvc.UpdateSingleVenueStats(req.VenueID, avg, count)
+	up, down := h.svc.GetVenueThumbs(req.VenueID)
+	schoolID := h.venueSvc.UpdateSingleVenueStats(req.VenueID, avg, count, up, down)
 
 	if schoolID != "" {
 		schoolAvg := h.venueSvc.GetSchoolAvgRating(schoolID)

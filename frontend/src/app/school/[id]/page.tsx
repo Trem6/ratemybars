@@ -16,6 +16,8 @@ import {
   MessageSquare,
   TrendingUp,
   Sparkles,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import {
@@ -157,19 +159,15 @@ function ReviewCard({ rating, venueName }: { rating: Rating; venueName?: string 
             )}
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Star
-              key={i}
-              size={12}
-              className={
-                i <= Math.round(rating.score)
-                  ? "text-amber-400 fill-amber-400"
-                  : "text-zinc-600"
-              }
-            />
-          ))}
-        </div>
+        {rating.score >= 4 ? (
+          <span className="flex items-center gap-1 text-emerald-400 text-xs font-medium">
+            <ThumbsUp size={14} fill="currentColor" />
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-red-400 text-xs font-medium">
+            <ThumbsDown size={14} fill="currentColor" />
+          </span>
+        )}
       </div>
       {rating.review && (
         <p className="text-zinc-300 text-sm leading-relaxed">{rating.review}</p>

@@ -130,7 +130,7 @@ func main() {
 	log.Printf("Seeded %d ratings", ratingSvc.Count())
 
 	// Update venue rating stats
-	venueSvc.UpdateRatingStats(ratingSvc.GetVenueStats)
+	venueSvc.UpdateRatingStats(ratingSvc.GetVenueStats, ratingSvc.GetVenueThumbs)
 
 	// Update venue counts on schools
 	venueCounts := make(map[string]int)
@@ -259,11 +259,14 @@ func main() {
 							schoolName = s.Name
 						}
 					}
-					text := fmt.Sprintf("%s rated %s", rating.AuthorName, venueName)
+					vote := "upvoted"
+					if rating.Score <= 2 {
+						vote = "downvoted"
+					}
+					text := fmt.Sprintf("%s %s %s", rating.AuthorName, vote, venueName)
 					if schoolName != "" {
 						text += " at " + schoolName
 					}
-					text += fmt.Sprintf(" %.1f stars", rating.Score)
 					items = append(items, activityItem{
 						Type:      "rating",
 						Text:      text,

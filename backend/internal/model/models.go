@@ -45,6 +45,8 @@ type Venue struct {
 	// Computed fields
 	AvgRating   float64 `json:"avg_rating"`
 	RatingCount int     `json:"rating_count"`
+	ThumbsUp    int     `json:"thumbs_up"`
+	ThumbsDown  int     `json:"thumbs_down"`
 }
 
 // Rating represents a user's rating and review of a venue.

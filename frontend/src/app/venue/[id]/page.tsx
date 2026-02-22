@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Star, MapPin, Beer, Music, Users, PartyPopper, HelpCircle, Clock } from "lucide-react";
+import { ArrowLeft, Star, ThumbsUp, ThumbsDown, MapPin, Beer, Music, Users, PartyPopper, HelpCircle, Clock } from "lucide-react";
 import { getVenue, getVenueRatings, type Venue, type Rating } from "@/lib/api";
 import RatingForm from "@/components/RatingForm";
 
@@ -113,12 +113,12 @@ export default function VenuePage() {
               </p>
             )}
           </div>
-          <div className="text-right shrink-0">
-            <div className="flex items-center gap-1 mb-1">
+          <div className="text-right shrink-0 space-y-1.5">
+            <div className="flex items-center gap-1">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Star
                   key={i}
-                  size={18}
+                  size={16}
                   className={
                     i <= Math.round(venue.avg_rating)
                       ? "text-amber-400 fill-amber-400"
@@ -126,10 +126,21 @@ export default function VenuePage() {
                   }
                 />
               ))}
+              <span className="text-sm text-zinc-400 ml-1">
+                {venue.avg_rating > 0 ? venue.avg_rating.toFixed(1) : "N/A"}
+              </span>
             </div>
-            <p className="text-sm text-zinc-400">
-              {venue.avg_rating > 0 ? venue.avg_rating.toFixed(1) : "N/A"} ({venue.rating_count} ratings)
-            </p>
+            <div className="flex items-center justify-end gap-3 text-xs">
+              <span className="flex items-center gap-1 text-emerald-400">
+                <ThumbsUp size={12} fill="currentColor" />
+                {venue.thumbs_up || 0}
+              </span>
+              <span className="flex items-center gap-1 text-red-400">
+                <ThumbsDown size={12} fill="currentColor" />
+                {venue.thumbs_down || 0}
+              </span>
+              <span className="text-zinc-500">{venue.rating_count} votes</span>
+            </div>
           </div>
         </div>
 
@@ -161,8 +172,8 @@ export default function VenuePage() {
 
         {ratings.length === 0 ? (
           <div className="text-center py-8 bg-zinc-900/50 border border-zinc-800/50 rounded-xl">
-            <Star size={24} className="mx-auto text-zinc-600 mb-2" />
-            <p className="text-zinc-500 text-sm">No reviews yet. Be the first!</p>
+            <ThumbsUp size={24} className="mx-auto text-zinc-600 mb-2" />
+            <p className="text-zinc-500 text-sm">No votes yet. Be the first!</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -180,19 +191,15 @@ export default function VenuePage() {
                       {rating.author_name || "Anonymous"}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Star
-                        key={i}
-                        size={12}
-                        className={
-                          i <= Math.round(rating.score)
-                            ? "text-amber-400 fill-amber-400"
-                            : "text-zinc-600"
-                        }
-                      />
-                    ))}
-                  </div>
+                  {rating.score >= 4 ? (
+                    <span className="flex items-center gap-1 text-emerald-400 text-xs font-medium">
+                      <ThumbsUp size={14} fill="currentColor" />
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-red-400 text-xs font-medium">
+                      <ThumbsDown size={14} fill="currentColor" />
+                    </span>
+                  )}
                 </div>
                 {rating.review && (
                   <p className="text-zinc-300 text-sm">{rating.review}</p>

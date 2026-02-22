@@ -40,8 +40,8 @@ func (s *FratRatingService) Create(ctx context.Context, req model.CreateFratRati
 		return nil, fmt.Errorf("authentication required")
 	}
 
-	if req.Score < 1 || req.Score > 5 {
-		return nil, fmt.Errorf("score must be between 1 and 5")
+	if req.Score != 1 && req.Score != 5 {
+		return nil, fmt.Errorf("score must be 1 (thumbs down) or 5 (thumbs up)")
 	}
 	if req.FratName == "" {
 		return nil, fmt.Errorf("frat_name is required")
