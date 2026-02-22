@@ -57,10 +57,16 @@ export default function Home() {
       <SplashScreen />
 
       {/* Map */}
-      <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} showTwoYear={showTwoYear} fratSchoolIds={fratSchoolIds} />
+      <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} showTwoYear={showTwoYear} fratSchoolIds={fratSchoolIds} highlightSchoolId={selectedSchool} />
 
-      {/* Search overlay */}
-      <div className="absolute top-4 left-4 right-4 sm:left-[10%] sm:right-[10%] z-30 flex justify-center">
+      {/* Search overlay — shifts left when panel is open to avoid overlap */}
+      <div
+        className={`absolute top-4 left-4 z-30 flex justify-center transition-all duration-300 ${
+          selectedSchool
+            ? "right-[500px] sm:left-[5%]"
+            : "right-4 sm:left-[10%] sm:right-[10%]"
+        }`}
+      >
         <SearchBar
           onSchoolSelect={handleSchoolSelect}
           showTwoYear={showTwoYear}

@@ -184,6 +184,55 @@ func (s *RatingService) ListByVenues(venueIDs []string) []model.Rating {
 	return results
 }
 
+// GetTopContributors returns users with the most ratings.
+func (s *RatingService) GetTopContributors(limit int) []map[string]interface{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	type userInfo struct {
+		id    string
+		name  string
+		count int
+	}
+
+	byUser := make(map[string]*userInfo)
+	for _, r := range s.ratings {
+		u, ok := byUser[r.AuthorID]
+		if !ok {
+			u = &userInfo{id: r.AuthorID, name: r.AuthorName}
+			byUser[r.AuthorID] = u
+		}
+		u.count++
+	}
+
+	list := make([]*userInfo, 0, len(byUser))
+	for _, u := range byUser {
+		list = append(list, u)
+	}
+
+	for i := 0; i < len(list); i++ {
+		for j := i + 1; j < len(list); j++ {
+			if list[j].count > list[i].count {
+				list[i], list[j] = list[j], list[i]
+			}
+		}
+	}
+
+	if limit > 0 && len(list) > limit {
+		list = list[:limit]
+	}
+
+	results := make([]map[string]interface{}, len(list))
+	for i, u := range list {
+		results[i] = map[string]interface{}{
+			"rank":         i + 1,
+			"username":     u.name,
+			"rating_count": u.count,
+		}
+	}
+	return results
+}
+
 // GetVenueStats returns average rating and count for a venue.
 func (s *RatingService) GetVenueStats(venueID string) (avgRating float64, count int) {
 	s.mu.RLock()

@@ -311,6 +311,59 @@ func (s *SchoolService) UpdateSingleSchoolRating(schoolID string, avgRating floa
 	}
 }
 
+// GetTopSchools returns schools sorted by party score for the leaderboard.
+func (s *SchoolService) GetTopSchools(limit int) []map[string]interface{} {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	type scored struct {
+		school model.School
+		score  float64
+	}
+
+	var list []scored
+	for _, school := range s.schools {
+		if school.VenueCount == 0 && school.AvgRating == 0 {
+			continue
+		}
+		venueScore := float64(school.VenueCount)
+		if venueScore > 5 {
+			venueScore = 5
+		}
+		score := (venueScore / 5 * 60) + (school.AvgRating / 5 * 40)
+		list = append(list, scored{school: school, score: score})
+	}
+
+	// Sort by score desc
+	for i := 0; i < len(list); i++ {
+		for j := i + 1; j < len(list); j++ {
+			if list[j].score > list[i].score {
+				list[i], list[j] = list[j], list[i]
+			}
+		}
+	}
+
+	if limit > 0 && len(list) > limit {
+		list = list[:limit]
+	}
+
+	results := make([]map[string]interface{}, len(list))
+	for i, item := range list {
+		results[i] = map[string]interface{}{
+			"rank":        i + 1,
+			"id":          item.school.ID,
+			"name":        item.school.Name,
+			"state":       item.school.State,
+			"control":     item.school.Control,
+			"venue_count": item.school.VenueCount,
+			"avg_rating":  item.school.AvgRating,
+			"frat_count":  item.school.FratCount,
+			"party_score": int(item.score),
+		}
+	}
+	return results
+}
+
 // UpdateFratCounts updates each school's FratCount using a lookup function.
 func (s *SchoolService) UpdateFratCounts(countFn func(string) int) {
 	s.mu.Lock()

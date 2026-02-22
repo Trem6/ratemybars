@@ -14,9 +14,10 @@ interface MapProps {
   flyTo?: { lng: number; lat: number; zoom?: number } | null;
   showTwoYear?: boolean;
   fratSchoolIds?: string[];
+  highlightSchoolId?: string | null;
 }
 
-export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSchoolIds }: MapProps) {
+export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSchoolIds, highlightSchoolId }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -132,6 +133,49 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
         },
       });
 
+      // Highlight ring for selected/searched school
+      mapInstance.addSource("highlight-school", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+
+      mapInstance.addLayer({
+        id: "highlight-pulse",
+        type: "circle",
+        source: "highlight-school",
+        paint: {
+          "circle-radius": [
+            "interpolate", ["exponential", 1.5], ["zoom"],
+            3, 12,
+            7, 20,
+            10, 30,
+            14, 45,
+          ],
+          "circle-color": "#fbbf24",
+          "circle-opacity": 0.15,
+          "circle-blur": 0.8,
+        },
+      });
+
+      mapInstance.addLayer({
+        id: "highlight-ring",
+        type: "circle",
+        source: "highlight-school",
+        paint: {
+          "circle-radius": [
+            "interpolate", ["exponential", 1.5], ["zoom"],
+            3, 6,
+            7, 10,
+            10, 16,
+            14, 22,
+          ],
+          "circle-color": "transparent",
+          "circle-stroke-width": 2.5,
+          "circle-stroke-color": "#fbbf24",
+          "circle-opacity": 1,
+        },
+      });
+
       // Click on school point
       mapInstance.on("click", "school-points", (e) => {
         const feature = e.features?.[0];
@@ -204,6 +248,10 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
             10, 14 * radiusScale,
             14, 24 * radiusScale,
           ]);
+          // Pulse the highlight ring
+          const hlOpacity = 0.6 + Math.sin(elapsed * Math.PI * 2) * 0.4;
+          mapInstance.setPaintProperty("highlight-pulse", "circle-opacity", hlOpacity * 0.2);
+          mapInstance.setPaintProperty("highlight-ring", "circle-stroke-opacity", hlOpacity);
         } catch {
           // Layer may not exist yet during cleanup
         }
@@ -270,6 +318,39 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
       });
     }
   }, [flyTo, loaded]);
+
+  // Highlight selected school on the map
+  useEffect(() => {
+    if (!map.current || !loaded) return;
+    const m = map.current;
+    const src = m.getSource("highlight-school") as maplibregl.GeoJSONSource | undefined;
+    if (!src) return;
+
+    if (!highlightSchoolId) {
+      src.setData({ type: "FeatureCollection", features: [] });
+      return;
+    }
+
+    const school = schoolsRef.current.find((s) => s.id === highlightSchoolId);
+    if (!school) {
+      src.setData({ type: "FeatureCollection", features: [] });
+      return;
+    }
+
+    src.setData({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [school.longitude, school.latitude],
+          },
+          properties: { id: school.id },
+        },
+      ],
+    });
+  }, [highlightSchoolId, loaded]);
 
   // Update map filters when showTwoYear or fratSchoolIds changes
   useEffect(() => {

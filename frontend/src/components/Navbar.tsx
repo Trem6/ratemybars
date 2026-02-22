@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { LogIn, LogOut, Plus, User, Shield } from "lucide-react";
+import { LogIn, LogOut, Plus, User, Shield, Trophy } from "lucide-react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -27,6 +27,14 @@ export default function Navbar() {
 
         {/* Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/leaderboard"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-zinc-800/50 text-zinc-400 hover:text-amber-400 text-sm font-medium transition-colors"
+            title="Leaderboard"
+          >
+            <Trophy size={16} />
+            <span className="hidden md:inline">Leaderboard</span>
+          </Link>
           {user ? (
             <>
               {isAdmin && (

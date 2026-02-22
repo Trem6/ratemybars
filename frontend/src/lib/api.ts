@@ -182,6 +182,31 @@ export const getAllFraternities = () =>
 export const getSchoolsByFrat = (name: string) =>
   apiFetch<string[]>("/api/fraternities/schools", { params: { name } });
 
+// Leaderboard
+export interface LeaderboardSchool {
+  rank: number;
+  id: string;
+  name: string;
+  state: string;
+  control: string;
+  venue_count: number;
+  avg_rating: number;
+  frat_count: number;
+  party_score: number;
+}
+
+export interface LeaderboardUser {
+  rank: number;
+  username: string;
+  rating_count: number;
+}
+
+export const getLeaderboardSchools = () =>
+  apiFetch<LeaderboardSchool[]>("/api/leaderboard/schools");
+
+export const getLeaderboardUsers = () =>
+  apiFetch<LeaderboardUser[]>("/api/leaderboard/users");
+
 export const getStates = () =>
   apiFetch<string[]>("/api/schools/states");
 

@@ -237,6 +237,16 @@ func main() {
 					"ratings": ratingSvc.Count(),
 				})
 			})
+
+			// Leaderboard
+			r.Get("/leaderboard/schools", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(schoolSvc.GetTopSchools(25))
+			})
+			r.Get("/leaderboard/users", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(ratingSvc.GetTopContributors(25))
+			})
 		})
 
 		// Auth routes (moderate rate limit)
