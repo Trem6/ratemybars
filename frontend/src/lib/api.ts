@@ -92,6 +92,7 @@ export interface MapSchool {
   iclevel: number;
   venue_count: number;
   avg_rating: number;
+  is_online: boolean;
 }
 
 export interface PaginatedResponse<T> {

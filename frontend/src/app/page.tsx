@@ -24,6 +24,8 @@ export default function Home() {
   const [selectedSchool, setSelectedSchool] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ lng: number; lat: number; zoom?: number } | null>(null);
   const [showTwoYear, setShowTwoYear] = useState(false);
+  const [showOnline, setShowOnline] = useState(false);
+  const [showPrivate, setShowPrivate] = useState(false);
   const [selectedFrat, setSelectedFrat] = useState("");
   const [fratSchoolIds, setFratSchoolIds] = useState<string[] | undefined>(undefined);
 
@@ -56,7 +58,7 @@ export default function Home() {
       <SplashScreen />
 
       {/* Map */}
-      <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} showTwoYear={showTwoYear} fratSchoolIds={fratSchoolIds} highlightSchoolId={selectedSchool} />
+      <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} showTwoYear={showTwoYear} showOnline={showOnline} showPrivate={showPrivate} fratSchoolIds={fratSchoolIds} highlightSchoolId={selectedSchool} />
 
       {/* Search overlay — shifts left when panel is open to avoid overlap */}
       <div
@@ -70,6 +72,10 @@ export default function Home() {
           onSchoolSelect={handleSchoolSelect}
           showTwoYear={showTwoYear}
           onShowTwoYearChange={setShowTwoYear}
+          showOnline={showOnline}
+          onShowOnlineChange={setShowOnline}
+          showPrivate={showPrivate}
+          onShowPrivateChange={setShowPrivate}
           selectedFrat={selectedFrat}
           onFratFilterChange={setSelectedFrat}
         />
@@ -92,14 +98,18 @@ export default function Home() {
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#00ffaa", boxShadow: "0 0 6px #00ffaa" }} />
             <span className="text-zinc-400">Public</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#bf5fff", boxShadow: "0 0 6px #bf5fff" }} />
-            <span className="text-zinc-400">Private NP</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ff6b6b", boxShadow: "0 0 6px #ff6b6b" }} />
-            <span className="text-zinc-400">For-Profit</span>
-          </div>
+          {showPrivate && (
+            <>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#bf5fff", boxShadow: "0 0 6px #bf5fff" }} />
+                <span className="text-zinc-400">Private NP</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ff6b6b", boxShadow: "0 0 6px #ff6b6b" }} />
+                <span className="text-zinc-400">For-Profit</span>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

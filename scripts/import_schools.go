@@ -37,6 +37,7 @@ type School struct {
 	Locale    int     `json:"locale"`
 	HBCU      bool    `json:"hbcu"`
 	Sector    int     `json:"sector"`
+	IsOnline  bool    `json:"is_online,omitempty"`
 }
 
 func main() {
@@ -143,6 +144,11 @@ func main() {
 			iclevel = 2
 		}
 
+		nameLower := strings.ToLower(instName)
+		isOnline := strings.Contains(nameLower, "online") ||
+			strings.Contains(nameLower, "virtual") ||
+			strings.Contains(nameLower, "distance")
+
 		school := School{
 			UnitID:    getInt(row, "UNITID"),
 			Name:      instName,
@@ -160,6 +166,7 @@ func main() {
 			Locale:    getInt(row, "LOCALE"),
 			HBCU:      getCol(row, "HBCU") == "1",
 			Sector:    sector,
+			IsOnline:  isOnline,
 		}
 		schools = append(schools, school)
 	}

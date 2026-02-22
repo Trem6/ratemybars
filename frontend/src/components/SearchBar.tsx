@@ -9,6 +9,10 @@ interface SearchBarProps {
   onFilterChange?: (filters: { state: string; control: string }) => void;
   showTwoYear?: boolean;
   onShowTwoYearChange?: (show: boolean) => void;
+  showOnline?: boolean;
+  onShowOnlineChange?: (show: boolean) => void;
+  showPrivate?: boolean;
+  onShowPrivateChange?: (show: boolean) => void;
   selectedFrat?: string;
   onFratFilterChange?: (fratName: string) => void;
 }
@@ -18,6 +22,10 @@ export default function SearchBar({
   onFilterChange,
   showTwoYear = false,
   onShowTwoYearChange,
+  showOnline = false,
+  onShowOnlineChange,
+  showPrivate = false,
+  onShowPrivateChange,
   selectedFrat = "",
   onFratFilterChange,
 }: SearchBarProps) {
@@ -59,25 +67,30 @@ export default function SearchBar({
     }
     setLoading(true);
     try {
+      const controlParam = !showPrivate && !filterControl ? "public" : filterControl;
       const params: Record<string, string> = {
         q,
         state: filterState,
-        control: filterControl,
-        limit: "10",
+        control: controlParam,
+        limit: "20",
         page: "1",
       };
       if (!showTwoYear) {
         params.iclevel = "1";
       }
       const res = await searchSchools(params);
-      setResults(res.data || []);
+      let data = res.data || [];
+      if (!showOnline) {
+        data = data.filter((s: School) => !s.name.match(/online|virtual|distance/i));
+      }
+      setResults(data.slice(0, 10));
       setShowResults(true);
     } catch {
       setResults([]);
     } finally {
       setLoading(false);
     }
-  }, [showTwoYear]);
+  }, [showTwoYear, showOnline, showPrivate]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -125,6 +138,8 @@ export default function SearchBar({
     setState("");
     setControl("");
     onShowTwoYearChange?.(false);
+    onShowOnlineChange?.(false);
+    onShowPrivateChange?.(false);
     onFratFilterChange?.("");
     setFratQuery("");
     onFilterChange?.({ state: "", control: "" });
@@ -141,7 +156,7 @@ export default function SearchBar({
     setShowFratDropdown(false);
   };
 
-  const hasActiveFilters = state || control || showTwoYear || selectedFrat;
+  const hasActiveFilters = state || control || showTwoYear || showOnline || showPrivate || selectedFrat;
 
   return (
     <div className="relative w-full max-w-5xl" ref={dropdownRef}>
@@ -293,6 +308,36 @@ export default function SearchBar({
             </div>
             <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">
               Include 2-Year Colleges
+            </span>
+          </label>
+          <label className="mt-2 flex items-center gap-2.5 cursor-pointer group">
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={showOnline}
+                onChange={(e) => onShowOnlineChange?.(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 rounded-full bg-zinc-700 peer-checked:bg-violet-600 transition-colors" />
+              <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-zinc-300 peer-checked:translate-x-4 peer-checked:bg-white transition-transform" />
+            </div>
+            <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">
+              Include Remote Colleges
+            </span>
+          </label>
+          <label className="mt-2 flex items-center gap-2.5 cursor-pointer group">
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={showPrivate}
+                onChange={(e) => onShowPrivateChange?.(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 rounded-full bg-zinc-700 peer-checked:bg-violet-600 transition-colors" />
+              <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-zinc-300 peer-checked:translate-x-4 peer-checked:bg-white transition-transform" />
+            </div>
+            <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">
+              Include Private Schools
             </span>
           </label>
           <div className="mt-3 flex gap-2">

@@ -20,6 +20,7 @@ type School struct {
 	County    string  `json:"county,omitempty"`
 	Locale    int     `json:"locale,omitempty"`
 	HBCU      bool    `json:"hbcu"`
+	IsOnline  bool    `json:"is_online"`
 
 	// Computed fields
 	VenueCount int     `json:"venue_count"`

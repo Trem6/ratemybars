@@ -95,6 +95,13 @@ func (s *SchoolService) loadData(data []byte) error {
 			Locale:    rs.Locale,
 			HBCU:      rs.HBCU,
 		}
+		nameLower := strings.ToLower(school.Name)
+		if strings.Contains(nameLower, "online") ||
+			strings.Contains(nameLower, "virtual") ||
+			strings.Contains(nameLower, "distance") {
+			school.IsOnline = true
+		}
+
 		s.schools = append(s.schools, school)
 		ptr := &s.schools[len(s.schools)-1]
 		s.byID[school.ID] = ptr
@@ -250,6 +257,7 @@ func (s *SchoolService) GetAllForMap(_ context.Context) ([]map[string]interface{
 			"iclevel":     school.ICLevel,
 			"venue_count": school.VenueCount,
 			"avg_rating":  school.AvgRating,
+			"is_online":   school.IsOnline,
 		})
 	}
 	return results, nil

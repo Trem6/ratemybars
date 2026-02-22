@@ -13,11 +13,13 @@ interface MapProps {
   onSchoolClick?: (school: MapSchool) => void;
   flyTo?: { lng: number; lat: number; zoom?: number } | null;
   showTwoYear?: boolean;
+  showOnline?: boolean;
+  showPrivate?: boolean;
   fratSchoolIds?: string[];
   highlightSchoolId?: string | null;
 }
 
-export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSchoolIds, highlightSchoolId }: MapProps) {
+export default function Map({ onSchoolClick, flyTo, showTwoYear = false, showOnline = false, showPrivate = false, fratSchoolIds, highlightSchoolId }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -51,6 +53,7 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
             iclevel: s.iclevel || 1,
             venue_count: s.venue_count || 0,
             avg_rating: s.avg_rating || 0,
+            is_online: s.is_online || false,
           },
         })),
       };
@@ -61,8 +64,13 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
         data: geojson,
       });
 
-      // Default filter: only 4-year schools (iclevel=1)
-      const defaultFilter: maplibregl.FilterSpecification = ["==", ["get", "iclevel"], 1];
+      // Default filter: only 4-year, non-online, public schools
+      const defaultFilter: maplibregl.FilterSpecification = [
+        "all",
+        ["==", ["get", "iclevel"], 1],
+        ["!", ["get", "is_online"]],
+        ["==", ["get", "control"], "public"],
+      ];
 
       // Outer neon glow — scales with zoom
       mapInstance.addLayer({
@@ -369,7 +377,7 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
     });
   }, [highlightSchoolId, loaded]);
 
-  // Update map filters when showTwoYear or fratSchoolIds changes
+  // Update map filters when showTwoYear, showOnline, showPrivate, or fratSchoolIds changes
   useEffect(() => {
     if (!map.current || !loaded) return;
     const m = map.current;
@@ -377,6 +385,12 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
     const filters: maplibregl.FilterSpecification[] = [];
     if (!showTwoYear) {
       filters.push(["==", ["get", "iclevel"], 1]);
+    }
+    if (!showOnline) {
+      filters.push(["!", ["get", "is_online"]]);
+    }
+    if (!showPrivate) {
+      filters.push(["==", ["get", "control"], "public"]);
     }
     if (fratSchoolIds) {
       filters.push(["in", ["get", "id"], ["literal", fratSchoolIds]]);
@@ -393,7 +407,7 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
     } catch {
       // Layers might not exist yet
     }
-  }, [showTwoYear, fratSchoolIds, loaded]);
+  }, [showTwoYear, showOnline, showPrivate, fratSchoolIds, loaded]);
 
   return (
     <>
