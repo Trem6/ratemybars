@@ -90,3 +90,27 @@ func (h *VenueHandler) Reject(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"message": "venue rejected"})
 }
+
+// Delete handles DELETE /api/admin/venues/{id} (admin only, removes any venue)
+func (h *VenueHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if err := h.svc.DeleteVenue(id); err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"message": "venue deleted"})
+}
+
+// SearchVenues handles GET /api/admin/venues/search?q=... (admin only)
+func (h *VenueHandler) SearchVenues(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query().Get("q")
+	if q == "" {
+		writeJSON(w, http.StatusOK, []model.Venue{})
+		return
+	}
+	results := h.svc.SearchVenues(q, 20)
+	if results == nil {
+		results = []model.Venue{}
+	}
+	writeJSON(w, http.StatusOK, results)
+}

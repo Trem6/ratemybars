@@ -313,6 +313,12 @@ export const updateUserRole = (id: string, role: string) =>
     body: JSON.stringify({ role }),
   });
 
+export const adminSearchVenues = (q: string) =>
+  apiFetch<Venue[]>("/api/admin/venues/search", { params: { q } });
+
+export const adminDeleteVenue = (id: string) =>
+  apiFetch<{ message: string }>(`/api/admin/venues/${id}`, { method: "DELETE" });
+
 export const adminAddFrat = (fratName: string, schoolId: string) =>
   apiFetch<{ status: string }>("/api/admin/fraternities", {
     method: "POST",

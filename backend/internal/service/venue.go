@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"strings"
 	"sync"
 	"time"
 
@@ -166,6 +167,41 @@ func (s *VenueService) RejectVenue(id string) error {
 		}
 	}
 	return fmt.Errorf("venue not found: %s", id)
+}
+
+// DeleteVenue removes a venue by ID (admin action, works on any venue).
+func (s *VenueService) DeleteVenue(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for i := range s.venues {
+		if s.venues[i].ID == id {
+			s.venues = append(s.venues[:i], s.venues[i+1:]...)
+			return nil
+		}
+	}
+	return fmt.Errorf("venue not found: %s", id)
+}
+
+// SearchVenues returns verified venues matching a query string.
+func (s *VenueService) SearchVenues(query string, limit int) []model.Venue {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if limit <= 0 {
+		limit = 20
+	}
+	q := strings.ToLower(query)
+	var results []model.Venue
+	for _, v := range s.venues {
+		if v.Verified && strings.Contains(strings.ToLower(v.Name), q) {
+			results = append(results, v)
+			if len(results) >= limit {
+				break
+			}
+		}
+	}
+	return results
 }
 
 // Count returns the total number of approved venues.

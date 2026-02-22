@@ -353,8 +353,10 @@ func main() {
 			r.Use(middleware.StrictRateLimit())
 
 			r.Get("/admin/venues/pending", venueHandler.ListPending)
+			r.Get("/admin/venues/search", venueHandler.SearchVenues)
 			r.Post("/admin/venues/{id}/approve", venueHandler.Approve)
 			r.Delete("/admin/venues/{id}/reject", venueHandler.Reject)
+			r.Delete("/admin/venues/{id}", venueHandler.Delete)
 
 			r.Get("/admin/users", authHandler.ListUsers)
 			r.Put("/admin/users/{id}/role", authHandler.UpdateUserRole)

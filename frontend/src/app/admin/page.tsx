@@ -14,12 +14,14 @@ import {
   getSchoolFraternities,
   adminAddFrat,
   adminRemoveFrat,
+  adminSearchVenues,
+  adminDeleteVenue,
   type Venue,
   type AdminUser,
   type School,
   type FratWithRating,
 } from "@/lib/api";
-import { Shield, Check, X, ArrowLeft, Inbox, Users, ClipboardList, ShieldCheck, ShieldOff, Plus, Trash2, Search } from "lucide-react";
+import { Shield, Check, X, ArrowLeft, Inbox, Users, ClipboardList, ShieldCheck, ShieldOff, Plus, Trash2, Search, Building2 } from "lucide-react";
 
 const CATEGORY_LABELS: Record<string, string> = {
   bar: "Bar",
@@ -29,7 +31,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-type Tab = "venues" | "users" | "fraternities";
+type Tab = "venues" | "users" | "fraternities" | "manage-venues";
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -216,6 +218,38 @@ export default function AdminPage() {
     ? glAllFrats.filter((n) => n.toLowerCase().includes(glNewFrat.toLowerCase())).slice(0, 8)
     : [];
 
+  // Manage venues state
+  const [mvQuery, setMvQuery] = useState("");
+  const [mvResults, setMvResults] = useState<Venue[]>([]);
+  const [mvSearching, setMvSearching] = useState(false);
+
+  useEffect(() => {
+    if (tab !== "manage-venues" || mvQuery.length < 2) { setMvResults([]); return; }
+    setMvSearching(true);
+    const t = setTimeout(async () => {
+      try {
+        const data = await adminSearchVenues(mvQuery);
+        setMvResults(data || []);
+      } catch { setMvResults([]); }
+      setMvSearching(false);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [mvQuery, tab]);
+
+  const handleDeleteVenue = async (venueId: string) => {
+    if (!confirm("Are you sure you want to permanently delete this venue?")) return;
+    setActionLoading(venueId);
+    setError("");
+    try {
+      await adminDeleteVenue(venueId);
+      setMvResults((prev) => prev.filter((v) => v.id !== venueId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete venue");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <Link
@@ -277,7 +311,20 @@ export default function AdminPage() {
           }`}
         >
           <Shield size={16} />
-          Fraternities
+          <span className="hidden sm:inline">Fraternities</span>
+          <span className="sm:hidden">Frats</span>
+        </button>
+        <button
+          onClick={() => setTab("manage-venues")}
+          className={`flex items-center gap-2 flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            tab === "manage-venues"
+              ? "bg-zinc-800 text-white"
+              : "text-zinc-400 hover:text-zinc-300"
+          }`}
+        >
+          <Building2 size={16} />
+          <span className="hidden sm:inline">Manage Venues</span>
+          <span className="sm:hidden">Venues</span>
         </button>
       </div>
 
@@ -545,6 +592,80 @@ export default function AdminPage() {
               <Shield size={48} className="text-zinc-700 mx-auto mb-4" />
               <h2 className="text-lg font-semibold text-zinc-400 mb-1">Manage Fraternities</h2>
               <p className="text-zinc-500 text-sm">Search for a school above to add or remove fraternities.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Manage Venues Tab */}
+      {tab === "manage-venues" && (
+        <div className="space-y-4">
+          <div className="relative">
+            <label className="block text-xs text-zinc-400 mb-1.5">Search Venues</label>
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+              <input
+                type="text"
+                value={mvQuery}
+                onChange={(e) => setMvQuery(e.target.value)}
+                placeholder="Search venue by name..."
+                className="w-full pl-10 pr-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-violet-500"
+              />
+            </div>
+          </div>
+
+          {mvSearching && (
+            <div className="flex justify-center py-8">
+              <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {!mvSearching && mvQuery.length >= 2 && mvResults.length === 0 && (
+            <div className="text-center py-10 bg-zinc-900/50 rounded-2xl border border-zinc-800/50">
+              <Inbox size={36} className="text-zinc-700 mx-auto mb-3" />
+              <p className="text-zinc-500 text-sm">No venues found matching &ldquo;{mvQuery}&rdquo;</p>
+            </div>
+          )}
+
+          {mvResults.length > 0 && (
+            <div className="space-y-2">
+              {mvResults.map((venue) => (
+                <div
+                  key={venue.id}
+                  className="p-4 bg-zinc-900/70 border border-zinc-800/50 rounded-xl flex items-start justify-between gap-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-white font-semibold text-sm truncate">{venue.name}</h3>
+                      <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/50">
+                        {CATEGORY_LABELS[venue.category] || venue.category}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-500">
+                      {venue.school_name && <span>{venue.school_name}</span>}
+                      {venue.address && <span>{venue.address}</span>}
+                      <span>{venue.rating_count} votes</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteVenue(venue.id)}
+                    disabled={actionLoading === venue.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-400 text-sm font-medium transition-colors border border-red-600/30 disabled:opacity-50 shrink-0"
+                    title="Delete venue"
+                  >
+                    <Trash2 size={14} />
+                    <span className="hidden sm:inline">Delete</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {mvQuery.length < 2 && (
+            <div className="text-center py-16 bg-zinc-900/50 rounded-2xl border border-zinc-800/50">
+              <Building2 size={48} className="text-zinc-700 mx-auto mb-4" />
+              <h2 className="text-lg font-semibold text-zinc-400 mb-1">Delete Venues</h2>
+              <p className="text-zinc-500 text-sm">Search for a venue by name to delete it.</p>
             </div>
           )}
         </div>
