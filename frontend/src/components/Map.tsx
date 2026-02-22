@@ -71,9 +71,10 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
         filter: defaultFilter,
         paint: {
           "circle-color": [
-            "case",
-            ["==", ["get", "control"], "public"],
-            "#00ffaa",
+            "match", ["get", "control"],
+            "public", "#00ffaa",
+            "private_nonprofit", "#bf5fff",
+            "private_forprofit", "#ff6b6b",
             "#bf5fff",
           ],
           "circle-radius": [
@@ -101,10 +102,11 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
         filter: defaultFilter,
         paint: {
           "circle-color": [
-            "case",
-            ["==", ["get", "control"], "public"],
-            "#00ffaa", // neon green
-            "#bf5fff", // neon purple
+            "match", ["get", "control"],
+            "public", "#00ffaa",
+            "private_nonprofit", "#bf5fff",
+            "private_forprofit", "#ff6b6b",
+            "#bf5fff",
           ],
           "circle-radius": [
             "interpolate", ["exponential", 1.5], ["zoom"],
@@ -120,9 +122,10 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
             14, 1,
           ],
           "circle-stroke-color": [
-            "case",
-            ["==", ["get", "control"], "public"],
-            "#00ffcc",
+            "match", ["get", "control"],
+            "public", "#00ffcc",
+            "private_nonprofit", "#d08fff",
+            "private_forprofit", "#ff8a8a",
             "#d08fff",
           ],
           "circle-opacity": 0.9,
@@ -162,7 +165,7 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
                   <div class="font-semibold text-sm">${feature.properties!.name}</div>
                 </div>
                 <div class="text-xs mt-1" style="color:#a1a1aa">${feature.properties!.state} &middot; ${
-                  feature.properties!.control === "public" ? "Public" : "Private"
+                  feature.properties!.control === "public" ? "Public" : feature.properties!.control === "private_forprofit" ? "Private For-Profit" : "Private"
                 }${vc > 0 ? ` &middot; ${vc} venue${vc > 1 ? "s" : ""}` : ""}</div>
               </div>`
             )

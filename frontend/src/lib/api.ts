@@ -70,7 +70,7 @@ export interface School {
   city: string;
   state: string;
   zip: string;
-  control: "public" | "private_nonprofit";
+  control: "public" | "private_nonprofit" | "private_forprofit";
   iclevel: number;
   website?: string;
   latitude: number;
@@ -272,4 +272,16 @@ export const updateUserRole = (id: string, role: string) =>
   apiFetch<{ message: string }>(`/api/admin/users/${id}/role`, {
     method: "PUT",
     body: JSON.stringify({ role }),
+  });
+
+export const adminAddFrat = (fratName: string, schoolId: string) =>
+  apiFetch<{ status: string }>("/api/admin/fraternities", {
+    method: "POST",
+    body: JSON.stringify({ frat_name: fratName, school_id: schoolId }),
+  });
+
+export const adminRemoveFrat = (fratName: string, schoolId: string) =>
+  apiFetch<{ status: string }>("/api/admin/fraternities", {
+    method: "DELETE",
+    params: { frat_name: fratName, school_id: schoolId },
   });

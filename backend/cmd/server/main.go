@@ -272,6 +272,9 @@ func main() {
 
 			r.Get("/admin/users", authHandler.ListUsers)
 			r.Put("/admin/users/{id}/role", authHandler.UpdateUserRole)
+
+			r.Post("/admin/fraternities", fratHandler.AdminAdd)
+			r.Delete("/admin/fraternities", fratHandler.AdminRemove)
 		})
 	})
 

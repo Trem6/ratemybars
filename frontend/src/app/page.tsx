@@ -96,7 +96,11 @@ export default function Home() {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#bf5fff", boxShadow: "0 0 6px #bf5fff" }} />
-            <span className="text-zinc-400">Private</span>
+            <span className="text-zinc-400">Private NP</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ff6b6b", boxShadow: "0 0 6px #ff6b6b" }} />
+            <span className="text-zinc-400">For-Profit</span>
           </div>
         </div>
       </div>

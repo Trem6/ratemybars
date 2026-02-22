@@ -186,6 +186,7 @@ export default function SchoolPage() {
   }
 
   const isPublic = school.control === "public";
+  const isForProfit = school.control === "private_forprofit";
 
   return (
     <div className="min-h-[calc(100vh-3.5rem)]">
@@ -195,6 +196,8 @@ export default function SchoolPage() {
         style={{
           background: isPublic
             ? "linear-gradient(135deg, #064e3b 0%, #0a0a0a 50%, #0a0a0a 100%)"
+            : isForProfit
+            ? "linear-gradient(135deg, #7f1d1d 0%, #0a0a0a 50%, #0a0a0a 100%)"
             : "linear-gradient(135deg, #3b0764 0%, #0a0a0a 50%, #0a0a0a 100%)",
         }}
       >
@@ -237,10 +240,12 @@ export default function SchoolPage() {
                   className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
                     isPublic
                       ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                      : isForProfit
+                      ? "bg-red-500/15 text-red-400 border border-red-500/20"
                       : "bg-violet-500/15 text-violet-400 border border-violet-500/20"
                   }`}
                 >
-                  {isPublic ? "Public" : "Private Non-Profit"}
+                  {isPublic ? "Public" : isForProfit ? "Private For-Profit" : "Private Non-Profit"}
                 </span>
                 <span className="inline-flex px-3 py-1 rounded-full text-xs font-medium bg-zinc-800/80 text-zinc-300 border border-zinc-700/30">
                   {school.iclevel === 2 ? "2-Year Institution" : "4-Year Institution"}
@@ -378,14 +383,12 @@ export default function SchoolPage() {
             <div className="text-center py-16 bg-zinc-900/60 backdrop-blur-xl border border-zinc-700/30 rounded-2xl">
               <div
                 className={`w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-4 ${
-                  isPublic
-                    ? "bg-emerald-500/10"
-                    : "bg-violet-500/10"
+                  isPublic ? "bg-emerald-500/10" : isForProfit ? "bg-red-500/10" : "bg-violet-500/10"
                 }`}
               >
                 <Star
                   size={28}
-                  className={isPublic ? "text-emerald-500/50" : "text-violet-500/50"}
+                  className={isPublic ? "text-emerald-500/50" : isForProfit ? "text-red-500/50" : "text-violet-500/50"}
                 />
               </div>
               <p className="text-zinc-300 font-medium text-lg">No venues yet</p>

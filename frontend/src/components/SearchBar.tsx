@@ -226,6 +226,7 @@ export default function SearchBar({
                 <option value="">All Types</option>
                 <option value="public">Public</option>
                 <option value="private_nonprofit">Private Non-Profit</option>
+                <option value="private_forprofit">Private For-Profit</option>
               </select>
             </div>
           </div>
@@ -325,8 +326,8 @@ export default function SearchBar({
               <div className="text-white text-[15px] font-medium">{school.name}</div>
               <div className="text-zinc-400 text-sm mt-0.5">
                 {school.city}, {school.state} &middot;{" "}
-                <span className={school.control === "public" ? "text-emerald-400" : "text-blue-400"}>
-                  {school.control === "public" ? "Public" : "Private"}
+                <span className={school.control === "public" ? "text-emerald-400" : school.control === "private_forprofit" ? "text-red-400" : "text-blue-400"}>
+                  {school.control === "public" ? "Public" : school.control === "private_forprofit" ? "For-Profit" : "Private"}
                 </span>
               </div>
             </button>

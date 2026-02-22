@@ -1,8 +1,8 @@
 // import_schools.go - Import IPEDS school data from CSV into JSON format.
 // Usage: go run scripts/import_schools.go -input path/to/hd2024.csv -output data/schools.json
 //
-// Includes: SECTOR 1 (Public 4-year), SECTOR 2 (Private non-profit 4-year),
-//           SECTOR 4 (Public 2-year), SECTOR 5 (Private non-profit 2-year).
+// Includes: SECTOR 1-6 (all 4-year and 2-year degree-granting institutions).
+// Excludes: SECTOR 7-9 (less-than-2-year), SECTOR 0/99 (unknown/admin).
 // When the full IPEDS dataset CSV is available, run this script to generate
 // the schools.json consumed by the backend.
 
@@ -67,7 +67,9 @@ func main() {
 	// Build column index
 	colIdx := make(map[string]int)
 	for i, col := range header {
-		colIdx[strings.TrimSpace(strings.ToUpper(col))] = i
+		clean := strings.TrimSpace(strings.ToUpper(col))
+		clean = strings.TrimLeft(clean, "\xef\xbb\xbf") // strip UTF-8 BOM
+		colIdx[clean] = i
 	}
 
 	// Verify required columns
@@ -113,8 +115,10 @@ func main() {
 		}
 
 		sector := getInt(row, "SECTOR")
-		// 1=Public 4yr, 2=Private nonprofit 4yr, 4=Public 2yr, 5=Private nonprofit 2yr
-		if sector != 1 && sector != 2 && sector != 4 && sector != 5 {
+		// Include degree-granting institutions:
+		// 1=Public 4yr, 2=Private NP 4yr, 3=Private FP 4yr,
+		// 4=Public 2yr, 5=Private NP 2yr, 6=Private FP 2yr
+		if sector < 1 || sector > 6 {
 			continue
 		}
 
@@ -126,8 +130,11 @@ func main() {
 
 		controlVal := getInt(row, "CONTROL")
 		controlStr := "public"
-		if controlVal == 2 {
+		switch controlVal {
+		case 2:
 			controlStr = "private_nonprofit"
+		case 3:
+			controlStr = "private_forprofit"
 		}
 
 		iclevel := getInt(row, "ICLEVEL")

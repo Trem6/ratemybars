@@ -122,6 +122,81 @@ func (s *FraternityService) GetBySchool(schoolID string) []model.FratWithRating 
 	return result
 }
 
+// AddToSchool links a fraternity to a school. Returns false if already present.
+func (s *FraternityService) AddToSchool(fratName, schoolID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for _, n := range s.bySchool[schoolID] {
+		if n == fratName {
+			return false
+		}
+	}
+
+	s.bySchool[schoolID] = append(s.bySchool[schoolID], fratName)
+	sort.Strings(s.bySchool[schoolID])
+
+	s.byName[fratName] = append(s.byName[fratName], schoolID)
+
+	// Rebuild allNames if this is a new fraternity
+	found := false
+	for _, n := range s.allNames {
+		if n == fratName {
+			found = true
+			break
+		}
+	}
+	if !found {
+		s.allNames = append(s.allNames, fratName)
+		sort.Strings(s.allNames)
+	}
+
+	return true
+}
+
+// RemoveFromSchool unlinks a fraternity from a school. Returns false if not found.
+func (s *FraternityService) RemoveFromSchool(fratName, schoolID string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	names := s.bySchool[schoolID]
+	idx := -1
+	for i, n := range names {
+		if n == fratName {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return false
+	}
+
+	s.bySchool[schoolID] = append(names[:idx], names[idx+1:]...)
+	if len(s.bySchool[schoolID]) == 0 {
+		delete(s.bySchool, schoolID)
+	}
+
+	ids := s.byName[fratName]
+	for i, id := range ids {
+		if id == schoolID {
+			s.byName[fratName] = append(ids[:i], ids[i+1:]...)
+			break
+		}
+	}
+	if len(s.byName[fratName]) == 0 {
+		delete(s.byName, fratName)
+		// Remove from allNames
+		for i, n := range s.allNames {
+			if n == fratName {
+				s.allNames = append(s.allNames[:i], s.allNames[i+1:]...)
+				break
+			}
+		}
+	}
+
+	return true
+}
+
 // Count returns the number of fraternities at a school.
 func (s *FraternityService) Count(schoolID string) int {
 	s.mu.RLock()
