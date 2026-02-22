@@ -220,16 +220,17 @@ export default function SchoolPage() {
 
   const fetchData = useCallback(async (schoolId: string) => {
     try {
-      const [s, v, f, r] = await Promise.all([
-        getSchool(schoolId),
+      const s = await getSchool(schoolId);
+      setSchool(s);
+
+      const [v, f, r] = await Promise.allSettled([
         getSchoolVenues(schoolId),
         getSchoolFraternities(schoolId),
         getSchoolRatings(schoolId),
       ]);
-      setSchool(s);
-      setVenues(v.data || []);
-      setFraternities(f || []);
-      setReviews(r || []);
+      setVenues(v.status === "fulfilled" ? v.value.data || [] : []);
+      setFraternities(f.status === "fulfilled" ? f.value || [] : []);
+      setReviews(r.status === "fulfilled" ? r.value || [] : []);
     } catch (err) {
       console.error(err);
     } finally {

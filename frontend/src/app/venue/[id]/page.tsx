@@ -68,13 +68,26 @@ export default function VenuePage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Back link */}
-      <Link
-        href="/"
-        className="inline-flex items-center gap-1 text-zinc-400 hover:text-white text-sm mb-6 transition-colors"
-      >
-        <ArrowLeft size={16} />
-        Back to map
-      </Link>
+      <div className="flex items-center gap-3 mb-6">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1 text-zinc-400 hover:text-white text-sm transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Map
+        </Link>
+        {venue?.school_id && (
+          <>
+            <span className="text-zinc-600">/</span>
+            <Link
+              href={`/school/${venue.school_id}`}
+              className="text-zinc-400 hover:text-white text-sm transition-colors"
+            >
+              {venue.school_name || "School"}
+            </Link>
+          </>
+        )}
+      </div>
 
       {/* Venue Header */}
       <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-2xl p-6 mb-6">
@@ -92,7 +105,10 @@ export default function VenuePage() {
             <h1 className="text-2xl font-bold text-white">{venue.name}</h1>
             {venue.school_name && (
               <p className="text-zinc-400 text-sm mt-1">
-                at <span className="text-violet-400">{venue.school_name}</span>
+                at{" "}
+                <Link href={`/school/${venue.school_id}`} className="text-violet-400 hover:text-violet-300 transition-colors">
+                  {venue.school_name}
+                </Link>
               </p>
             )}
           </div>
