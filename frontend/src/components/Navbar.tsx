@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useAuth } from "@/lib/auth-context";
 import { LogIn, LogOut, Plus, User, Shield, Trophy } from "lucide-react";
+import ActivityTicker from "./ActivityTicker";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -11,12 +13,16 @@ export default function Navbar() {
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-zinc-950/70 backdrop-blur-2xl border-b border-zinc-700/30 shadow-lg shadow-black/20">
-      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2 group shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-bold text-sm group-hover:scale-105 transition-transform">
-            R
-          </div>
+          <Image
+            src="/logo.png"
+            alt="RateMyCollegeParty"
+            width={36}
+            height={36}
+            className="group-hover:scale-110 transition-transform drop-shadow-[0_0_8px_rgba(167,139,250,0.4)]"
+          />
           <span className="text-lg font-bold text-white tracking-tight hidden sm:inline">
             Rate<span className="text-violet-400">My</span>CollegeParty
           </span>
@@ -25,15 +31,20 @@ export default function Navbar() {
           </span>
         </Link>
 
+        {/* Activity Ticker - fills middle space */}
+        <div className="flex-1 min-w-0 hidden md:block overflow-hidden mx-2">
+          <ActivityTicker />
+        </div>
+
         {/* Actions */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto shrink-0">
           <Link
             href="/leaderboard"
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-zinc-800/50 text-zinc-400 hover:text-amber-400 text-sm font-medium transition-colors"
             title="Leaderboard"
           >
             <Trophy size={16} />
-            <span className="hidden md:inline">Leaderboard</span>
+            <span className="hidden lg:inline">Leaderboard</span>
           </Link>
           {user ? (
             <>

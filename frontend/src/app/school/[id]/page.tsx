@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -110,10 +110,10 @@ function MiniMap({ latitude, longitude }: { latitude: number; longitude: number 
 }
 
 function useFadeIn() {
-  const refs = useRef<(HTMLElement | null)[]>([]);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
+  if (!observerRef.current && typeof window !== "undefined") {
+    observerRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
@@ -123,16 +123,16 @@ function useFadeIn() {
       },
       { threshold: 0.1 }
     );
+  }
 
-    refs.current.forEach((el) => {
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
+  useEffect(() => {
+    return () => observerRef.current?.disconnect();
   }, []);
 
   const setRef = (index: number) => (el: HTMLElement | null) => {
-    refs.current[index] = el;
+    if (el && observerRef.current) {
+      observerRef.current.observe(el);
+    }
   };
 
   return setRef;
@@ -210,6 +210,7 @@ function QuickStat({
 
 export default function SchoolPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const [school, setSchool] = useState<School | null>(null);
   const [venues, setVenues] = useState<Venue[]>([]);
@@ -309,13 +310,13 @@ export default function SchoolPage() {
         />
 
         <div className="relative max-w-4xl mx-auto px-4 pt-6 pb-10">
-          <Link
-            href="/"
+          <button
+            onClick={() => router.back()}
             className="inline-flex items-center gap-1 text-zinc-400 hover:text-white text-sm mb-6 transition-colors"
           >
             <ArrowLeft size={16} />
             Back to map
-          </Link>
+          </button>
 
           <div className="flex flex-col sm:flex-row gap-6 animate-fade-in-up">
             <div className="shrink-0">

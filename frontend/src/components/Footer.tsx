@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Footer() {
   return (
@@ -10,9 +11,7 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-bold text-xs">
-                R
-              </div>
+              <Image src="/logo.png" alt="RateMyCollegeParty" width={28} height={28} className="drop-shadow-[0_0_6px_rgba(167,139,250,0.3)]" />
               <span className="text-base font-bold text-white tracking-tight">
                 Rate<span className="text-violet-400">My</span>CollegeParty
               </span>

@@ -49,21 +49,19 @@ export default function ActivityTicker() {
   }, []);
 
   return (
-    <div className="overflow-hidden relative">
+    <div className="overflow-hidden relative h-full flex items-center">
       {/* Fade edges */}
-      <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-zinc-950 to-transparent z-10 pointer-events-none" />
-      <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-zinc-950 to-transparent z-10 pointer-events-none" />
+      <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-zinc-950/80 to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-zinc-950/80 to-transparent z-10 pointer-events-none" />
 
       <div className="flex animate-ticker whitespace-nowrap">
         {items.map((item, i) => (
           <div
             key={i}
-            className="inline-flex items-center gap-2 px-4 py-2 text-xs text-zinc-400 shrink-0"
+            className="inline-flex items-center gap-1.5 px-3 text-[11px] text-zinc-500 shrink-0"
           >
             <IconForType type={item.icon} color={item.color} />
             <span>{item.text}</span>
-            <span className="text-zinc-600">&middot;</span>
-            <span className="text-zinc-600">{Math.floor(Math.random() * 55 + 2)}m ago</span>
           </div>
         ))}
       </div>

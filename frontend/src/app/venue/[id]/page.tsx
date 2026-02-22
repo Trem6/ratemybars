@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Star, MapPin, Beer, Music, Users, PartyPopper, HelpCircle, Clock } from "lucide-react";
 import { getVenue, getVenueRatings, type Venue, type Rating } from "@/lib/api";
@@ -17,6 +17,7 @@ const categoryConfig: Record<string, { icon: React.ReactNode; label: string; col
 
 export default function VenuePage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id as string;
   const [venue, setVenue] = useState<Venue | null>(null);
   const [ratings, setRatings] = useState<Rating[]>([]);
@@ -55,9 +56,9 @@ export default function VenuePage() {
       <div className="min-h-[calc(100vh-3.5rem)] flex items-center justify-center">
         <div className="text-center">
           <p className="text-zinc-400">Venue not found</p>
-          <Link href="/" className="text-violet-400 hover:text-violet-300 mt-2 inline-block">
+          <button onClick={() => router.back()} className="text-violet-400 hover:text-violet-300 mt-2 inline-block">
             Back to map
-          </Link>
+          </button>
         </div>
       </div>
     );
@@ -69,13 +70,13 @@ export default function VenuePage() {
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Back link */}
       <div className="flex items-center gap-3 mb-6">
-        <Link
-          href="/"
+        <button
+          onClick={() => router.back()}
           className="inline-flex items-center gap-1 text-zinc-400 hover:text-white text-sm transition-colors"
         >
           <ArrowLeft size={16} />
-          Map
-        </Link>
+          Back
+        </button>
         {venue?.school_id && (
           <>
             <span className="text-zinc-600">/</span>

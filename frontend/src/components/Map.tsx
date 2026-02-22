@@ -271,11 +271,22 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
   const initMap = useCallback(() => {
     if (!mapContainer.current || map.current) return;
 
+    let center: [number, number] = [-98.5795, 39.8283];
+    let zoom = 4;
+    try {
+      const saved = sessionStorage.getItem("rmcp-map-view");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        center = [parsed.lng, parsed.lat];
+        zoom = parsed.zoom;
+      }
+    } catch { /* ignore */ }
+
     const mapInstance = new maplibregl.Map({
       container: mapContainer.current,
       style: DARK_STYLE,
-      center: [-98.5795, 39.8283], // Center of US
-      zoom: 4,
+      center,
+      zoom,
       pitch: 0,
       attributionControl: false,
     });
@@ -290,6 +301,12 @@ export default function Map({ onSchoolClick, flyTo, showTwoYear = false, fratSch
       }),
       "bottom-right"
     );
+
+    const saveView = () => {
+      const c = mapInstance.getCenter();
+      sessionStorage.setItem("rmcp-map-view", JSON.stringify({ lng: c.lng, lat: c.lat, zoom: mapInstance.getZoom() }));
+    };
+    mapInstance.on("moveend", saveView);
 
     mapInstance.on("load", async () => {
       setLoaded(true);

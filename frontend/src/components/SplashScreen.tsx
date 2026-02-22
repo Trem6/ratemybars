@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 export default function SplashScreen() {
   const [visible, setVisible] = useState(false);
@@ -56,12 +57,13 @@ export default function SplashScreen() {
       <div className="relative flex flex-col items-center gap-4">
         {/* Animated logo */}
         <div
-          className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-white font-bold text-3xl shadow-2xl shadow-violet-500/30"
+          className="w-20 h-20 flex items-center justify-center"
           style={{
             animation: visible ? "splashLogoIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both" : "none",
+            filter: "drop-shadow(0 0 20px rgba(139, 92, 246, 0.4))",
           }}
         >
-          R
+          <Image src="/logo.png" alt="RateMyCollegeParty" width={80} height={80} priority />
         </div>
 
         {/* Animated text */}
