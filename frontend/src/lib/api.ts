@@ -121,7 +121,7 @@ export const DEFAULT_FILTERS: FilterState = {
   controlTypes: ["public", "private_nonprofit"],
   schoolLevels: [1],
   instSizes: [1, 2, 3, 4, 5],
-  showReligious: true,
+  showReligious: false,
   showHBCU: false,
   showTribal: false,
   showOnline: false,

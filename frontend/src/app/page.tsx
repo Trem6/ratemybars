@@ -25,6 +25,7 @@ export default function Home() {
   const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [selectedFrat, setSelectedFrat] = useState("");
   const [fratSchoolIds, setFratSchoolIds] = useState<string[] | undefined>(undefined);
+  const [visibleSchools, setVisibleSchools] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     if (!selectedFrat) {
@@ -62,6 +63,7 @@ export default function Home() {
         filters={filters}
         fratSchoolIds={fratSchoolIds}
         highlightSchoolId={selectedSchool}
+        onVisibleCountChange={setVisibleSchools}
       />
 
       <div
@@ -85,7 +87,7 @@ export default function Home() {
       </div>
 
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 hidden sm:block">
-        <StatsBar />
+        <StatsBar visibleSchools={visibleSchools} />
       </div>
 
       {/* Legend */}

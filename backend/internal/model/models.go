@@ -4,29 +4,29 @@ import "time"
 
 // School represents a college/university imported from IPEDS data.
 type School struct {
-	ID        string  `json:"id"`
-	UnitID    int     `json:"unitid"`
-	Name      string  `json:"name"`
-	AliasName string  `json:"alias_name,omitempty"`
-	Address   string  `json:"address"`
-	City      string  `json:"city"`
-	State     string  `json:"state"`
-	Zip       string  `json:"zip"`
-	Control   string  `json:"control"` // "public" or "private_nonprofit"
-	ICLevel   int     `json:"iclevel"`
-	Website   string  `json:"website,omitempty"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	County    string  `json:"county,omitempty"`
-	Locale         int  `json:"locale,omitempty"`
-	HBCU           bool `json:"hbcu"`
-	IsOnline       bool `json:"is_online"`
-	InstSize       int  `json:"instsize"`
-	IsTribal       bool `json:"is_tribal"`
-	IsReligious    bool `json:"is_religious"`
-	IsCommunityCol bool `json:"is_community_college"`
-	IsLiberalArts  bool `json:"is_liberal_arts"`
-	IsGraduateOnly bool `json:"is_graduate_only"`
+	ID             string  `json:"id"`
+	UnitID         int     `json:"unitid"`
+	Name           string  `json:"name"`
+	AliasName      string  `json:"alias_name,omitempty"`
+	Address        string  `json:"address"`
+	City           string  `json:"city"`
+	State          string  `json:"state"`
+	Zip            string  `json:"zip"`
+	Control        string  `json:"control"` // "public" or "private_nonprofit"
+	ICLevel        int     `json:"iclevel"`
+	Website        string  `json:"website,omitempty"`
+	Latitude       float64 `json:"latitude"`
+	Longitude      float64 `json:"longitude"`
+	County         string  `json:"county,omitempty"`
+	Locale         int     `json:"locale,omitempty"`
+	HBCU           bool    `json:"hbcu"`
+	IsOnline       bool    `json:"is_online"`
+	InstSize       int     `json:"instsize"`
+	IsTribal       bool    `json:"is_tribal"`
+	IsReligious    bool    `json:"is_religious"`
+	IsCommunityCol bool    `json:"is_community_college"`
+	IsLiberalArts  bool    `json:"is_liberal_arts"`
+	IsGraduateOnly bool    `json:"is_graduate_only"`
 
 	// Computed fields
 	VenueCount int     `json:"venue_count"`

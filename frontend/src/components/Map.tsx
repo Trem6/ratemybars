@@ -14,58 +14,101 @@ interface MapProps {
   filters?: FilterState;
   fratSchoolIds?: string[];
   highlightSchoolId?: string | null;
+  onVisibleCountChange?: (count: number) => void;
 }
 
-function buildFilterExpression(filters: FilterState, fratSchoolIds?: string[]): maplibregl.FilterSpecification | null {
-  const parts: maplibregl.FilterSpecification[] = [];
+function schoolPassesFilter(s: MapSchool, filters: FilterState, fratSchoolIds?: string[]): boolean {
+  if (!filters.controlTypes.includes(s.control)) return false;
+  if (!filters.schoolLevels.includes(s.iclevel)) return false;
+  if (filters.instSizes.length < 5 && s.instsize > 0 && !filters.instSizes.includes(s.instsize)) return false;
+  if (!filters.showReligious && s.is_religious) return false;
+  if (!filters.showHBCU && s.hbcu) return false;
+  if (!filters.showTribal && s.is_tribal) return false;
+  if (!filters.showOnline && s.is_online) return false;
+  if (!filters.showCommunityCollege && s.is_community_college) return false;
+  if (!filters.showLiberalArts && s.is_liberal_arts) return false;
+  if (!filters.showGraduateOnly && s.is_graduate_only) return false;
+  if (filters.showGreekLife && (s.frat_count || 0) === 0) return false;
+  if (fratSchoolIds && !fratSchoolIds.includes(s.id)) return false;
+  return true;
+}
 
-  // Multi-select: institution type
+function buildMapFilter(filters: FilterState, fratSchoolIds?: string[]): maplibregl.FilterSpecification | null {
+  const parts: maplibregl.ExpressionSpecification[] = [];
+
+  // Institution type — use match expression for reliable multi-value check
   if (filters.controlTypes.length > 0 && filters.controlTypes.length < 3) {
-    parts.push(["in", ["get", "control"], ["literal", filters.controlTypes]] as maplibregl.FilterSpecification);
+    const matchExpr: unknown[] = ["match", ["get", "control"]];
+    for (const ct of filters.controlTypes) {
+      matchExpr.push(ct, true);
+    }
+    matchExpr.push(false);
+    parts.push(matchExpr as maplibregl.ExpressionSpecification);
   }
 
-  // Multi-select: school level
+  // School level
   if (filters.schoolLevels.length > 0 && filters.schoolLevels.length < 3) {
-    parts.push(["in", ["get", "iclevel"], ["literal", filters.schoolLevels]] as maplibregl.FilterSpecification);
+    const matchExpr: unknown[] = ["match", ["get", "iclevel"]];
+    for (const lv of filters.schoolLevels) {
+      matchExpr.push(lv, true);
+    }
+    matchExpr.push(false);
+    parts.push(matchExpr as maplibregl.ExpressionSpecification);
   }
 
-  // Multi-select: institution size (include 0 for unknown/not-reported schools)
+  // Institution size
   if (filters.instSizes.length < 5) {
-    parts.push(["in", ["get", "instsize"], ["literal", [...filters.instSizes, 0]]] as maplibregl.FilterSpecification);
+    const matchExpr: unknown[] = ["match", ["get", "instsize"]];
+    for (const sz of [...filters.instSizes, 0]) {
+      matchExpr.push(sz, true);
+    }
+    matchExpr.push(false);
+    parts.push(matchExpr as maplibregl.ExpressionSpecification);
   }
 
   // Toggle filters — when OFF, exclude matching schools
-  if (!filters.showReligious) parts.push(["!", ["get", "is_religious"]] as maplibregl.FilterSpecification);
-  if (!filters.showHBCU) parts.push(["!", ["get", "hbcu"]] as maplibregl.FilterSpecification);
-  if (!filters.showTribal) parts.push(["!", ["get", "is_tribal"]] as maplibregl.FilterSpecification);
-  if (!filters.showOnline) parts.push(["!", ["get", "is_online"]] as maplibregl.FilterSpecification);
-  if (!filters.showCommunityCollege) parts.push(["!", ["get", "is_community_college"]] as maplibregl.FilterSpecification);
-  if (!filters.showLiberalArts) parts.push(["!", ["get", "is_liberal_arts"]] as maplibregl.FilterSpecification);
-  if (!filters.showGraduateOnly) parts.push(["!", ["get", "is_graduate_only"]] as maplibregl.FilterSpecification);
+  if (!filters.showReligious) parts.push(["!", ["get", "is_religious"]] as maplibregl.ExpressionSpecification);
+  if (!filters.showHBCU) parts.push(["!", ["get", "hbcu"]] as maplibregl.ExpressionSpecification);
+  if (!filters.showTribal) parts.push(["!", ["get", "is_tribal"]] as maplibregl.ExpressionSpecification);
+  if (!filters.showOnline) parts.push(["!", ["get", "is_online"]] as maplibregl.ExpressionSpecification);
+  if (!filters.showCommunityCollege) parts.push(["!", ["get", "is_community_college"]] as maplibregl.ExpressionSpecification);
+  if (!filters.showLiberalArts) parts.push(["!", ["get", "is_liberal_arts"]] as maplibregl.ExpressionSpecification);
+  if (!filters.showGraduateOnly) parts.push(["!", ["get", "is_graduate_only"]] as maplibregl.ExpressionSpecification);
 
   // Greek Life: when ON, only show schools with >=1 frat
-  if (filters.showGreekLife) parts.push([">", ["get", "frat_count"], 0] as maplibregl.FilterSpecification);
+  if (filters.showGreekLife) parts.push([">", ["get", "frat_count"], 0] as maplibregl.ExpressionSpecification);
 
-  // Frat name filter
-  if (fratSchoolIds) {
-    parts.push(["in", ["get", "id"], ["literal", fratSchoolIds]] as maplibregl.FilterSpecification);
+  // Frat name filter — use match for IDs too
+  if (fratSchoolIds && fratSchoolIds.length > 0) {
+    const matchExpr: unknown[] = ["match", ["get", "id"]];
+    for (const id of fratSchoolIds) {
+      matchExpr.push(id, true);
+    }
+    matchExpr.push(false);
+    parts.push(matchExpr as maplibregl.ExpressionSpecification);
   }
 
   if (parts.length === 0) return null;
-  if (parts.length === 1) return parts[0];
+  if (parts.length === 1) return parts[0] as maplibregl.FilterSpecification;
   return ["all", ...parts] as maplibregl.FilterSpecification;
 }
 
-export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, fratSchoolIds, highlightSchoolId }: MapProps) {
+export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, fratSchoolIds, highlightSchoolId, onVisibleCountChange }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const [loaded, setLoaded] = useState(false);
   const schoolsRef = useRef<MapSchool[]>([]);
   const onSchoolClickRef = useRef(onSchoolClick);
+  const onVisibleCountRef = useRef(onVisibleCountChange);
+  const layersReady = useRef(false);
 
   useEffect(() => {
     onSchoolClickRef.current = onSchoolClick;
   }, [onSchoolClick]);
+
+  useEffect(() => {
+    onVisibleCountRef.current = onVisibleCountChange;
+  }, [onVisibleCountChange]);
 
   const addSchoolData = useCallback(async (mapInstance: maplibregl.Map) => {
     try {
@@ -106,14 +149,11 @@ export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, f
         data: geojson,
       });
 
-      const defaultFilter = buildFilterExpression(DEFAULT_FILTERS);
-
       // Outer neon glow
       mapInstance.addLayer({
         id: "school-glow",
         type: "circle",
         source: "schools",
-        filter: defaultFilter ?? undefined,
         paint: {
           "circle-color": [
             "match", ["get", "control"],
@@ -144,7 +184,6 @@ export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, f
         id: "school-points",
         type: "circle",
         source: "schools",
-        filter: defaultFilter ?? undefined,
         paint: {
           "circle-color": [
             "match", ["get", "control"],
@@ -177,7 +216,7 @@ export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, f
         },
       });
 
-      // Highlight ring for selected/searched school
+      // Highlight ring
       mapInstance.addSource("highlight-school", {
         type: "geojson",
         data: { type: "FeatureCollection", features: [] },
@@ -190,10 +229,7 @@ export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, f
         paint: {
           "circle-radius": [
             "interpolate", ["exponential", 1.5], ["zoom"],
-            3, 12,
-            7, 20,
-            10, 30,
-            14, 45,
+            3, 12, 7, 20, 10, 30, 14, 45,
           ],
           "circle-color": "#fbbf24",
           "circle-opacity": 0.15,
@@ -208,10 +244,7 @@ export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, f
         paint: {
           "circle-radius": [
             "interpolate", ["exponential", 1.5], ["zoom"],
-            3, 6,
-            7, 10,
-            10, 16,
-            14, 22,
+            3, 6, 7, 10, 10, 16, 14, 22,
           ],
           "circle-color": "transparent",
           "circle-stroke-width": 2.5,
@@ -220,7 +253,7 @@ export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, f
         },
       });
 
-      // Click on school point
+      // Click handler
       mapInstance.on("click", "school-points", (e) => {
         const feature = e.features?.[0];
         if (!feature || !feature.properties) return;
@@ -293,15 +326,14 @@ export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, f
           mapInstance.setPaintProperty("highlight-pulse", "circle-opacity", hlOpacity * 0.2);
           mapInstance.setPaintProperty("highlight-ring", "circle-stroke-opacity", hlOpacity);
         } catch {
-          // Layer may not exist yet during cleanup
+          // Layer may not exist during cleanup
         }
         glowFrame = requestAnimationFrame(pulseGlow);
       };
       glowFrame = requestAnimationFrame(pulseGlow);
+      mapInstance.on("remove", () => cancelAnimationFrame(glowFrame));
 
-      mapInstance.on("remove", () => {
-        cancelAnimationFrame(glowFrame);
-      });
+      layersReady.current = true;
     } catch (err) {
       console.error("Failed to load school data:", err);
     }
@@ -348,8 +380,8 @@ export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, f
     mapInstance.on("moveend", saveView);
 
     mapInstance.on("load", async () => {
-      setLoaded(true);
       await addSchoolData(mapInstance);
+      setLoaded(true);
     });
   }, [addSchoolData]);
 
@@ -395,32 +427,29 @@ export default function Map({ onSchoolClick, flyTo, filters = DEFAULT_FILTERS, f
 
     src.setData({
       type: "FeatureCollection",
-      features: [
-        {
-          type: "Feature",
-          geometry: {
-            type: "Point",
-            coordinates: [school.longitude, school.latitude],
-          },
-          properties: { id: school.id },
-        },
-      ],
+      features: [{
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [school.longitude, school.latitude] },
+        properties: { id: school.id },
+      }],
     });
   }, [highlightSchoolId, loaded]);
 
-  // Apply filters to map layers
+  // Apply filters to map layers and compute visible count
   useEffect(() => {
-    if (!map.current || !loaded) return;
+    if (!map.current || !loaded || !layersReady.current) return;
     const m = map.current;
 
-    const combined = buildFilterExpression(filters, fratSchoolIds);
+    const combined = buildMapFilter(filters, fratSchoolIds);
 
-    try {
-      m.setFilter("school-points", combined);
-      m.setFilter("school-glow", combined);
-    } catch {
-      // Layers might not exist yet
-    }
+    m.setFilter("school-points", combined);
+    m.setFilter("school-glow", combined);
+
+    // Compute visible school count from data (instant, no MapLibre query needed)
+    const count = schoolsRef.current.filter(
+      (s) => schoolPassesFilter(s, filters, fratSchoolIds)
+    ).length;
+    onVisibleCountRef.current?.(count);
   }, [filters, fratSchoolIds, loaded]);
 
   return (
