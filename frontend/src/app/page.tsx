@@ -7,9 +7,8 @@ import SchoolPanel from "@/components/SchoolPanel";
 import StatsBar from "@/components/StatsBar";
 import ExplorePanel from "@/components/ExplorePanel";
 import SplashScreen from "@/components/SplashScreen";
-import { getSchoolsByFrat, type School, type MapSchool } from "@/lib/api";
+import { getSchoolsByFrat, DEFAULT_FILTERS, type School, type MapSchool, type FilterState } from "@/lib/api";
 
-// Dynamic import for Map to avoid SSR issues with maplibre-gl
 const Map = dynamic(() => import("@/components/Map"), {
   ssr: false,
   loading: () => (
@@ -23,9 +22,7 @@ const Map = dynamic(() => import("@/components/Map"), {
 export default function Home() {
   const [selectedSchool, setSelectedSchool] = useState<string | null>(null);
   const [flyTo, setFlyTo] = useState<{ lng: number; lat: number; zoom?: number } | null>(null);
-  const [showTwoYear, setShowTwoYear] = useState(false);
-  const [showOnline, setShowOnline] = useState(false);
-  const [showPrivate, setShowPrivate] = useState(false);
+  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
   const [selectedFrat, setSelectedFrat] = useState("");
   const [fratSchoolIds, setFratSchoolIds] = useState<string[] | undefined>(undefined);
 
@@ -52,15 +49,21 @@ export default function Home() {
     setSelectedSchool(school.id);
   }, []);
 
+  const showPrivateNP = filters.controlTypes.includes("private_nonprofit");
+  const showFP = filters.controlTypes.includes("private_forprofit");
+
   return (
     <div className="relative h-[calc(100vh-3.5rem)] overflow-hidden">
-      {/* Welcome splash */}
       <SplashScreen />
 
-      {/* Map */}
-      <Map onSchoolClick={handleMapSchoolClick} flyTo={flyTo} showTwoYear={showTwoYear} showOnline={showOnline} showPrivate={showPrivate} fratSchoolIds={fratSchoolIds} highlightSchoolId={selectedSchool} />
+      <Map
+        onSchoolClick={handleMapSchoolClick}
+        flyTo={flyTo}
+        filters={filters}
+        fratSchoolIds={fratSchoolIds}
+        highlightSchoolId={selectedSchool}
+      />
 
-      {/* Search overlay — shifts left when panel is open to avoid overlap */}
       <div
         className={`absolute top-4 left-4 z-30 flex justify-center transition-all duration-300 ${
           selectedSchool
@@ -70,23 +73,17 @@ export default function Home() {
       >
         <SearchBar
           onSchoolSelect={handleSchoolSelect}
-          showTwoYear={showTwoYear}
-          onShowTwoYearChange={setShowTwoYear}
-          showOnline={showOnline}
-          onShowOnlineChange={setShowOnline}
-          showPrivate={showPrivate}
-          onShowPrivateChange={setShowPrivate}
+          filters={filters}
+          onFiltersChange={setFilters}
           selectedFrat={selectedFrat}
           onFratFilterChange={setSelectedFrat}
         />
       </div>
 
-      {/* Explore Panel */}
       <div className="absolute top-[4.5rem] left-4 z-30 hidden sm:block">
         <ExplorePanel onSchoolSelect={handleSchoolSelect} />
       </div>
 
-      {/* Stats Bar */}
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 hidden sm:block">
         <StatsBar />
       </div>
@@ -94,26 +91,27 @@ export default function Home() {
       {/* Legend */}
       <div className="absolute bottom-6 left-4 z-30 bg-zinc-900/70 backdrop-blur-xl border border-zinc-700/30 rounded-xl px-3.5 py-2.5 hidden sm:block shadow-2xl">
         <div className="flex items-center gap-4 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#00ffaa", boxShadow: "0 0 6px #00ffaa" }} />
-            <span className="text-zinc-400">Public</span>
-          </div>
-          {showPrivate && (
-            <>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#bf5fff", boxShadow: "0 0 6px #bf5fff" }} />
-                <span className="text-zinc-400">Private NP</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ff6b6b", boxShadow: "0 0 6px #ff6b6b" }} />
-                <span className="text-zinc-400">For-Profit</span>
-              </div>
-            </>
+          {filters.controlTypes.includes("public") && (
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#00ffaa", boxShadow: "0 0 6px #00ffaa" }} />
+              <span className="text-zinc-400">Public</span>
+            </div>
+          )}
+          {showPrivateNP && (
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#bf5fff", boxShadow: "0 0 6px #bf5fff" }} />
+              <span className="text-zinc-400">Private NP</span>
+            </div>
+          )}
+          {showFP && (
+            <div className="flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: "#ff6b6b", boxShadow: "0 0 6px #ff6b6b" }} />
+              <span className="text-zinc-400">For-Profit</span>
+            </div>
           )}
         </div>
       </div>
 
-      {/* School Panel */}
       {selectedSchool && (
         <SchoolPanel
           schoolId={selectedSchool}

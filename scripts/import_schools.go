@@ -21,23 +21,29 @@ import (
 )
 
 type School struct {
-	UnitID    int     `json:"unitid"`
-	Name      string  `json:"name"`
-	Alias     string  `json:"alias"`
-	Address   string  `json:"address"`
-	City      string  `json:"city"`
-	State     string  `json:"state"`
-	Zip       string  `json:"zip"`
-	Control   string  `json:"control"`
-	ICLevel   int     `json:"iclevel"`
-	Website   string  `json:"website"`
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
-	County    string  `json:"county"`
-	Locale    int     `json:"locale"`
-	HBCU      bool    `json:"hbcu"`
-	Sector    int     `json:"sector"`
-	IsOnline  bool    `json:"is_online,omitempty"`
+	UnitID           int     `json:"unitid"`
+	Name             string  `json:"name"`
+	Alias            string  `json:"alias"`
+	Address          string  `json:"address"`
+	City             string  `json:"city"`
+	State            string  `json:"state"`
+	Zip              string  `json:"zip"`
+	Control          string  `json:"control"`
+	ICLevel          int     `json:"iclevel"`
+	Website          string  `json:"website"`
+	Latitude         float64 `json:"latitude"`
+	Longitude        float64 `json:"longitude"`
+	County           string  `json:"county"`
+	Locale           int     `json:"locale"`
+	HBCU             bool    `json:"hbcu"`
+	Sector           int     `json:"sector"`
+	InstSize         int     `json:"instsize"`
+	IsOnline         bool    `json:"is_online,omitempty"`
+	IsTribal         bool    `json:"is_tribal,omitempty"`
+	IsReligious      bool    `json:"is_religious,omitempty"`
+	IsCommunityCol   bool    `json:"is_community_college,omitempty"`
+	IsLiberalArts    bool    `json:"is_liberal_arts,omitempty"`
+	IsGraduateOnly   bool    `json:"is_graduate_only,omitempty"`
 }
 
 func main() {
@@ -103,6 +109,9 @@ func main() {
 
 	var schools []School
 	lineNum := 1
+	stats := struct {
+		hbcu, tribal, online, religious, cc, la, gradOnly int
+	}{}
 
 	for {
 		row, err := reader.Read()
@@ -116,9 +125,6 @@ func main() {
 		}
 
 		sector := getInt(row, "SECTOR")
-		// Include degree-granting institutions:
-		// 1=Public 4yr, 2=Private NP 4yr, 3=Private FP 4yr,
-		// 4=Public 2yr, 5=Private NP 2yr, 6=Private FP 2yr
 		if sector < 1 || sector > 6 {
 			continue
 		}
@@ -144,31 +150,70 @@ func main() {
 			iclevel = 2
 		}
 
-		nameLower := strings.ToLower(instName)
-		isOnline := strings.Contains(nameLower, "online") ||
-			strings.Contains(nameLower, "virtual") ||
-			strings.Contains(nameLower, "distance")
+		// Derived boolean fields from IPEDS data
+		hbcu := getCol(row, "HBCU") == "1"
+		tribal := getCol(row, "TRIBAL") == "1"
+
+		distnced := getInt(row, "DISTNCED")
+		rptmth := getInt(row, "RPTMTH")
+		isOnline := distnced == 1 || rptmth == 3
+
+		relaffil := getInt(row, "RELAFFIL")
+		cntlaffi := getInt(row, "CNTLAFFI")
+		isReligious := relaffil != -2 || cntlaffi == 4
+
+		c21basic := getInt(row, "C21BASIC")
+		carnegieIC := getInt(row, "CARNEGIEIC")
+		carnegieAPM := getInt(row, "CARNEGIEAPM")
+		carnegieGPM := getInt(row, "CARNEGIEGPM")
+		isCommunityCol := (c21basic >= 1 && c21basic <= 14) ||
+			(c21basic >= 22 && c21basic <= 32) ||
+			(carnegieIC >= 21 && carnegieIC <= 31) ||
+			(carnegieAPM >= 3 && carnegieAPM <= 12) ||
+			(carnegieGPM >= 3 && carnegieGPM <= 12)
+
+		isLiberalArts := c21basic == 21
+		isGraduateOnly := getInt(row, "UGOFFER") == 2
+
+		instSize := getInt(row, "INSTSIZE")
+		if instSize < 0 {
+			instSize = 0
+		}
 
 		school := School{
-			UnitID:    getInt(row, "UNITID"),
-			Name:      instName,
-			Alias:     getCol(row, "IALIAS"),
-			Address:   getCol(row, "ADDR"),
-			City:      getCol(row, "CITY"),
-			State:     getCol(row, "STABBR"),
-			Zip:       getCol(row, "ZIP"),
-			Control:   controlStr,
-			ICLevel:   iclevel,
-			Website:   getCol(row, "WEBADDR"),
-			Latitude:  lat,
-			Longitude: lon,
-			County:    getCol(row, "COUNTYNM"),
-			Locale:    getInt(row, "LOCALE"),
-			HBCU:      getCol(row, "HBCU") == "1",
-			Sector:    sector,
-			IsOnline:  isOnline,
+			UnitID:         getInt(row, "UNITID"),
+			Name:           instName,
+			Alias:          getCol(row, "IALIAS"),
+			Address:        getCol(row, "ADDR"),
+			City:           getCol(row, "CITY"),
+			State:          getCol(row, "STABBR"),
+			Zip:            getCol(row, "ZIP"),
+			Control:        controlStr,
+			ICLevel:        iclevel,
+			Website:        getCol(row, "WEBADDR"),
+			Latitude:       lat,
+			Longitude:      lon,
+			County:         getCol(row, "COUNTYNM"),
+			Locale:         getInt(row, "LOCALE"),
+			HBCU:           hbcu,
+			Sector:         sector,
+			InstSize:       instSize,
+			IsOnline:       isOnline,
+			IsTribal:       tribal,
+			IsReligious:    isReligious,
+			IsCommunityCol: isCommunityCol,
+			IsLiberalArts:  isLiberalArts,
+			IsGraduateOnly: isGraduateOnly,
 		}
 		schools = append(schools, school)
+
+		if hbcu { stats.hbcu++ }
+		if tribal { stats.tribal++ }
+		if isOnline { stats.online++ }
+		if isReligious { stats.religious++ }
+		if isCommunityCol { stats.cc++ }
+		if isLiberalArts { stats.la++ }
+		if isGraduateOnly { stats.gradOnly++ }
 	}
 
 	// Write JSON output
@@ -199,6 +244,13 @@ func main() {
 	fmt.Printf("  4-year: %d\n", fourYear)
 	fmt.Printf("  2-year: %d\n", twoYear)
 	fmt.Printf("  States: %d\n", countStates(schools))
+	fmt.Printf("  HBCU: %d\n", stats.hbcu)
+	fmt.Printf("  Tribal: %d\n", stats.tribal)
+	fmt.Printf("  Online: %d\n", stats.online)
+	fmt.Printf("  Religious: %d\n", stats.religious)
+	fmt.Printf("  Community College: %d\n", stats.cc)
+	fmt.Printf("  Liberal Arts: %d\n", stats.la)
+	fmt.Printf("  Graduate Only: %d\n", stats.gradOnly)
 	fmt.Printf("  Output: %s\n", *outputPath)
 }
 

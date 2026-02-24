@@ -47,22 +47,29 @@ func (s *SchoolService) LoadFromJSON(path string) error {
 func (s *SchoolService) loadData(data []byte) error {
 
 	var rawSchools []struct {
-		UnitID    int     `json:"unitid"`
-		Name      string  `json:"name"`
-		Alias     string  `json:"alias"`
-		Address   string  `json:"address"`
-		City      string  `json:"city"`
-		State     string  `json:"state"`
-		Zip       string  `json:"zip"`
-		Control   string  `json:"control"`
-		ICLevel   int     `json:"iclevel"`
-		Website   string  `json:"website"`
-		Latitude  float64 `json:"latitude"`
-		Longitude float64 `json:"longitude"`
-		County    string  `json:"county"`
-		Locale    int     `json:"locale"`
-		HBCU      bool    `json:"hbcu"`
-		Sector    int     `json:"sector"`
+		UnitID         int     `json:"unitid"`
+		Name           string  `json:"name"`
+		Alias          string  `json:"alias"`
+		Address        string  `json:"address"`
+		City           string  `json:"city"`
+		State          string  `json:"state"`
+		Zip            string  `json:"zip"`
+		Control        string  `json:"control"`
+		ICLevel        int     `json:"iclevel"`
+		Website        string  `json:"website"`
+		Latitude       float64 `json:"latitude"`
+		Longitude      float64 `json:"longitude"`
+		County         string  `json:"county"`
+		Locale         int     `json:"locale"`
+		HBCU           bool    `json:"hbcu"`
+		Sector         int     `json:"sector"`
+		InstSize       int     `json:"instsize"`
+		IsOnline       bool    `json:"is_online"`
+		IsTribal       bool    `json:"is_tribal"`
+		IsReligious    bool    `json:"is_religious"`
+		IsCommunityCol bool    `json:"is_community_college"`
+		IsLiberalArts  bool    `json:"is_liberal_arts"`
+		IsGraduateOnly bool    `json:"is_graduate_only"`
 	}
 
 	if err := json.Unmarshal(data, &rawSchools); err != nil {
@@ -78,28 +85,29 @@ func (s *SchoolService) loadData(data []byte) error {
 
 	for _, rs := range rawSchools {
 		school := model.School{
-			ID:        fmt.Sprintf("%d", rs.UnitID),
-			UnitID:    rs.UnitID,
-			Name:      rs.Name,
-			AliasName: rs.Alias,
-			Address:   rs.Address,
-			City:      rs.City,
-			State:     rs.State,
-			Zip:       rs.Zip,
-			Control:   rs.Control,
-			ICLevel:   rs.ICLevel,
-			Website:   rs.Website,
-			Latitude:  rs.Latitude,
-			Longitude: rs.Longitude,
-			County:    rs.County,
-			Locale:    rs.Locale,
-			HBCU:      rs.HBCU,
-		}
-		nameLower := strings.ToLower(school.Name)
-		if strings.Contains(nameLower, "online") ||
-			strings.Contains(nameLower, "virtual") ||
-			strings.Contains(nameLower, "distance") {
-			school.IsOnline = true
+			ID:             fmt.Sprintf("%d", rs.UnitID),
+			UnitID:         rs.UnitID,
+			Name:           rs.Name,
+			AliasName:      rs.Alias,
+			Address:        rs.Address,
+			City:           rs.City,
+			State:          rs.State,
+			Zip:            rs.Zip,
+			Control:        rs.Control,
+			ICLevel:        rs.ICLevel,
+			Website:        rs.Website,
+			Latitude:       rs.Latitude,
+			Longitude:      rs.Longitude,
+			County:         rs.County,
+			Locale:         rs.Locale,
+			HBCU:           rs.HBCU,
+			InstSize:       rs.InstSize,
+			IsOnline:       rs.IsOnline,
+			IsTribal:       rs.IsTribal,
+			IsReligious:    rs.IsReligious,
+			IsCommunityCol: rs.IsCommunityCol,
+			IsLiberalArts:  rs.IsLiberalArts,
+			IsGraduateOnly: rs.IsGraduateOnly,
 		}
 
 		s.schools = append(s.schools, school)
@@ -248,16 +256,24 @@ func (s *SchoolService) GetAllForMap(_ context.Context) ([]map[string]interface{
 	results := make([]map[string]interface{}, 0, len(s.schools))
 	for _, school := range s.schools {
 		results = append(results, map[string]interface{}{
-			"id":          school.ID,
-			"name":        school.Name,
-			"latitude":    school.Latitude,
-			"longitude":   school.Longitude,
-			"state":       school.State,
-			"control":     school.Control,
-			"iclevel":     school.ICLevel,
-			"venue_count": school.VenueCount,
-			"avg_rating":  school.AvgRating,
-			"is_online":   school.IsOnline,
+			"id":                   school.ID,
+			"name":                 school.Name,
+			"latitude":             school.Latitude,
+			"longitude":            school.Longitude,
+			"state":                school.State,
+			"control":              school.Control,
+			"iclevel":              school.ICLevel,
+			"venue_count":          school.VenueCount,
+			"avg_rating":           school.AvgRating,
+			"frat_count":           school.FratCount,
+			"instsize":             school.InstSize,
+			"hbcu":                 school.HBCU,
+			"is_online":            school.IsOnline,
+			"is_tribal":            school.IsTribal,
+			"is_religious":         school.IsReligious,
+			"is_community_college": school.IsCommunityCol,
+			"is_liberal_arts":      school.IsLiberalArts,
+			"is_graduate_only":     school.IsGraduateOnly,
 		})
 	}
 	return results, nil

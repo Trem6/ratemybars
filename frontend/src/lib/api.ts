@@ -92,8 +92,44 @@ export interface MapSchool {
   iclevel: number;
   venue_count: number;
   avg_rating: number;
+  frat_count: number;
+  instsize: number;
+  hbcu: boolean;
   is_online: boolean;
+  is_tribal: boolean;
+  is_religious: boolean;
+  is_community_college: boolean;
+  is_liberal_arts: boolean;
+  is_graduate_only: boolean;
 }
+
+export interface FilterState {
+  controlTypes: string[];
+  schoolLevels: number[];
+  instSizes: number[];
+  showReligious: boolean;
+  showHBCU: boolean;
+  showTribal: boolean;
+  showOnline: boolean;
+  showCommunityCollege: boolean;
+  showLiberalArts: boolean;
+  showGraduateOnly: boolean;
+  showGreekLife: boolean;
+}
+
+export const DEFAULT_FILTERS: FilterState = {
+  controlTypes: ["public", "private_nonprofit"],
+  schoolLevels: [1],
+  instSizes: [1, 2, 3, 4, 5],
+  showReligious: true,
+  showHBCU: false,
+  showTribal: false,
+  showOnline: false,
+  showCommunityCollege: false,
+  showLiberalArts: false,
+  showGraduateOnly: false,
+  showGreekLife: false,
+};
 
 export interface PaginatedResponse<T> {
   data: T[];

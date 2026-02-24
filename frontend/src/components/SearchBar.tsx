@@ -1,31 +1,57 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, X, Filter, Users, ChevronDown } from "lucide-react";
-import { searchSchools, getAllFraternities, type School } from "@/lib/api";
+import { Search, X, Filter, Users, ChevronDown, RotateCcw } from "lucide-react";
+import { searchSchools, getAllFraternities, DEFAULT_FILTERS, type School, type FilterState } from "@/lib/api";
 
 interface SearchBarProps {
   onSchoolSelect: (school: School) => void;
-  onFilterChange?: (filters: { state: string; control: string }) => void;
-  showTwoYear?: boolean;
-  onShowTwoYearChange?: (show: boolean) => void;
-  showOnline?: boolean;
-  onShowOnlineChange?: (show: boolean) => void;
-  showPrivate?: boolean;
-  onShowPrivateChange?: (show: boolean) => void;
+  filters: FilterState;
+  onFiltersChange: (filters: FilterState) => void;
   selectedFrat?: string;
   onFratFilterChange?: (fratName: string) => void;
 }
 
+const CONTROL_OPTIONS = [
+  { value: "public", label: "Public" },
+  { value: "private_nonprofit", label: "Private NP" },
+  { value: "private_forprofit", label: "For-Profit" },
+] as const;
+
+const LEVEL_OPTIONS = [
+  { value: 1, label: "4-Year" },
+  { value: 2, label: "2-Year" },
+  { value: 3, label: "<2-Year" },
+] as const;
+
+const SIZE_OPTIONS = [
+  { value: 1, label: "<1K" },
+  { value: 2, label: "1-5K" },
+  { value: 3, label: "5-10K" },
+  { value: 4, label: "10-20K" },
+  { value: 5, label: "20K+" },
+] as const;
+
+const TOGGLE_FILTERS: { key: keyof FilterState; label: string }[] = [
+  { key: "showReligious", label: "Religious Colleges" },
+  { key: "showHBCU", label: "HBCU" },
+  { key: "showTribal", label: "Tribal Colleges" },
+  { key: "showOnline", label: "Online Only" },
+  { key: "showCommunityCollege", label: "Community Colleges" },
+  { key: "showLiberalArts", label: "Liberal Arts" },
+  { key: "showGraduateOnly", label: "Graduate Only" },
+];
+
+const STATES = ["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"];
+
+function isDefaultFilters(f: FilterState): boolean {
+  return JSON.stringify(f) === JSON.stringify(DEFAULT_FILTERS);
+}
+
 export default function SearchBar({
   onSchoolSelect,
-  onFilterChange,
-  showTwoYear = false,
-  onShowTwoYearChange,
-  showOnline = false,
-  onShowOnlineChange,
-  showPrivate = false,
-  onShowPrivateChange,
+  filters,
+  onFiltersChange,
   selectedFrat = "",
   onFratFilterChange,
 }: SearchBarProps) {
@@ -33,20 +59,17 @@ export default function SearchBar({
   const [results, setResults] = useState<School[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [state, setState] = useState("");
-  const [control, setControl] = useState("");
+  const [stateFilter, setStateFilter] = useState("");
   const [loading, setLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<NodeJS.Timeout>(null);
 
-  // Fraternity autocomplete state
   const [fratNames, setFratNames] = useState<string[]>([]);
   const [fratQuery, setFratQuery] = useState("");
   const [showFratDropdown, setShowFratDropdown] = useState(false);
   const fratInputRef = useRef<HTMLDivElement>(null);
 
-  // Load fraternity names on first filter panel open
   useEffect(() => {
     if (showFilters && fratNames.length === 0) {
       getAllFraternities()
@@ -59,30 +82,32 @@ export default function SearchBar({
     ? fratNames.filter((n) => n.toLowerCase().includes(fratQuery.toLowerCase()))
     : fratNames;
 
-  const doSearch = useCallback(async (q: string, filterState: string, filterControl: string) => {
-    const hasFilters = filterState !== "" || filterControl !== "";
-    if (q.length < 2 && !hasFilters) {
+  const doSearch = useCallback(async (q: string, filterState: string) => {
+    if (q.length < 2 && !filterState) {
       setResults([]);
       return;
     }
     setLoading(true);
     try {
-      const controlParam = !showPrivate && !filterControl ? "public" : filterControl;
       const params: Record<string, string> = {
         q,
         state: filterState,
-        control: controlParam,
         limit: "20",
         page: "1",
       };
-      if (!showTwoYear) {
-        params.iclevel = "1";
+      if (filters.controlTypes.length === 1) {
+        params.control = filters.controlTypes[0];
+      }
+      if (filters.schoolLevels.length === 1) {
+        params.iclevel = String(filters.schoolLevels[0]);
       }
       const res = await searchSchools(params);
       let data = res.data || [];
-      if (!showOnline) {
-        data = data.filter((s: School) => !s.name.match(/online|virtual|distance/i));
-      }
+      data = data.filter((s: School) => {
+        if (!filters.controlTypes.includes(s.control)) return false;
+        if (!filters.schoolLevels.includes(s.iclevel)) return false;
+        return true;
+      });
       setResults(data.slice(0, 10));
       setShowResults(true);
     } catch {
@@ -90,15 +115,15 @@ export default function SearchBar({
     } finally {
       setLoading(false);
     }
-  }, [showTwoYear, showOnline, showPrivate]);
+  }, [filters]);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => doSearch(query, state, control), 300);
+    debounceRef.current = setTimeout(() => doSearch(query, stateFilter), 300);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, state, control, showTwoYear, doSearch]);
+  }, [query, stateFilter, doSearch]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -110,7 +135,6 @@ export default function SearchBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Close frat dropdown on outside click
   useEffect(() => {
     if (!showFratDropdown) return;
     const handler = (e: MouseEvent) => {
@@ -128,26 +152,11 @@ export default function SearchBar({
     onSchoolSelect(school);
   };
 
-  const handleFilterApply = () => {
-    onFilterChange?.({ state, control });
-    setShowFilters(false);
-    doSearch(query, state, control);
-  };
-
-  const handleFilterClear = () => {
-    setState("");
-    setControl("");
-    onShowTwoYearChange?.(false);
-    onShowOnlineChange?.(false);
-    onShowPrivateChange?.(false);
+  const handleReset = () => {
+    onFiltersChange(DEFAULT_FILTERS);
+    setStateFilter("");
     onFratFilterChange?.("");
     setFratQuery("");
-    onFilterChange?.({ state: "", control: "" });
-    setShowFilters(false);
-    if (query.length < 2) {
-      setResults([]);
-      setShowResults(false);
-    }
   };
 
   const handleFratSelect = (name: string) => {
@@ -156,7 +165,27 @@ export default function SearchBar({
     setShowFratDropdown(false);
   };
 
-  const hasActiveFilters = state || control || showTwoYear || showOnline || showPrivate || selectedFrat;
+  const toggleMultiSelect = <T,>(arr: T[], value: T): T[] => {
+    return arr.includes(value)
+      ? arr.filter((v) => v !== value)
+      : [...arr, value];
+  };
+
+  const hasActiveFilters = !isDefaultFilters(filters) || stateFilter || selectedFrat;
+  const activeFilterCount =
+    (3 - filters.controlTypes.length === 0 ? 0 : 3 - filters.controlTypes.length) +
+    (3 - filters.schoolLevels.length === 0 ? 0 : 3 - filters.schoolLevels.length) +
+    (5 - filters.instSizes.length) +
+    (filters.showReligious !== DEFAULT_FILTERS.showReligious ? 1 : 0) +
+    (filters.showHBCU !== DEFAULT_FILTERS.showHBCU ? 1 : 0) +
+    (filters.showTribal !== DEFAULT_FILTERS.showTribal ? 1 : 0) +
+    (filters.showOnline !== DEFAULT_FILTERS.showOnline ? 1 : 0) +
+    (filters.showCommunityCollege !== DEFAULT_FILTERS.showCommunityCollege ? 1 : 0) +
+    (filters.showLiberalArts !== DEFAULT_FILTERS.showLiberalArts ? 1 : 0) +
+    (filters.showGraduateOnly !== DEFAULT_FILTERS.showGraduateOnly ? 1 : 0) +
+    (filters.showGreekLife ? 1 : 0) +
+    (stateFilter ? 1 : 0) +
+    (selectedFrat ? 1 : 0);
 
   return (
     <div className="relative w-full max-w-5xl" ref={dropdownRef}>
@@ -187,13 +216,18 @@ export default function SearchBar({
           )}
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`relative p-2 rounded-lg transition-colors ${
               showFilters || hasActiveFilters
                 ? "bg-violet-600/20 text-violet-400"
                 : "hover:bg-zinc-800 text-zinc-500 hover:text-white"
             }`}
           >
             <Filter size={18} />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-violet-500 text-white text-[9px] font-bold flex items-center justify-center">
+                {activeFilterCount > 9 ? "9+" : activeFilterCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -216,145 +250,201 @@ export default function SearchBar({
 
       {/* Filter Panel */}
       {showFilters && (
-        <div className="absolute top-full left-0 right-0 mt-2.5 p-5 bg-zinc-900/90 backdrop-blur-xl border border-zinc-700/30 rounded-2xl shadow-2xl z-50">
-          <div className="grid grid-cols-2 gap-3">
+        <div className="absolute top-full left-0 right-0 mt-2.5 bg-zinc-900/90 backdrop-blur-xl border border-zinc-700/30 rounded-2xl shadow-2xl z-50 max-h-[70vh] overflow-y-auto">
+          <div className="p-5 space-y-4">
+            {/* State */}
             <div>
-              <label className="block text-xs text-zinc-400 mb-1">State</label>
+              <label className="block text-xs text-zinc-400 mb-1.5 font-medium">State</label>
               <select
-                value={state}
-                onChange={(e) => setState(e.target.value)}
+                value={stateFilter}
+                onChange={(e) => setStateFilter(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500"
               >
                 <option value="">All States</option>
-                {["AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID","IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS","MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"].map((s) => (
+                {STATES.map((s) => (
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-xs text-zinc-400 mb-1">Type</label>
-              <select
-                value={control}
-                onChange={(e) => setControl(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:border-violet-500"
-              >
-                <option value="">All Types</option>
-                <option value="public">Public</option>
-                <option value="private_nonprofit">Private Non-Profit</option>
-                <option value="private_forprofit">Private For-Profit</option>
-              </select>
-            </div>
-          </div>
 
-          {/* Fraternity Filter */}
-          <div className="mt-3" ref={fratInputRef}>
-            <label className="block text-xs text-zinc-400 mb-1">
-              <span className="flex items-center gap-1">
-                <Users size={11} />
-                Fraternity Filter
-              </span>
-            </label>
-            {selectedFrat ? (
-              <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-blue-500/30 rounded-lg">
-                <span className="text-sm text-blue-300 flex-1 truncate">{selectedFrat}</span>
-                <button
-                  onClick={() => onFratFilterChange?.("")}
-                  className="text-zinc-500 hover:text-white transition-colors shrink-0"
-                >
-                  <X size={14} />
-                </button>
+            {/* Institution Type */}
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Institution Type</label>
+              <div className="flex flex-wrap gap-1.5">
+                {CONTROL_OPTIONS.map((opt) => {
+                  const active = filters.controlTypes.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => onFiltersChange({ ...filters, controlTypes: toggleMultiSelect(filters.controlTypes, opt.value) })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        active
+                          ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
+                          : "bg-zinc-800 text-zinc-500 border border-zinc-700 hover:text-zinc-300 hover:border-zinc-600"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
               </div>
-            ) : (
-              <div className="relative">
-                <input
-                  type="text"
-                  value={fratQuery}
-                  onChange={(e) => {
-                    setFratQuery(e.target.value);
-                    setShowFratDropdown(true);
-                  }}
-                  onFocus={() => setShowFratDropdown(true)}
-                  placeholder="Search fraternities..."
-                  className="w-full px-3 py-2 pr-8 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500"
-                />
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
-                {showFratDropdown && filteredFrats.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
-                    {filteredFrats.map((name) => (
-                      <button
-                        key={name}
-                        onClick={() => handleFratSelect(name)}
-                        className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
-                      >
-                        {name}
-                      </button>
-                    ))}
+            </div>
+
+            {/* School Level */}
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1.5 font-medium">School Level</label>
+              <div className="flex flex-wrap gap-1.5">
+                {LEVEL_OPTIONS.map((opt) => {
+                  const active = filters.schoolLevels.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => onFiltersChange({ ...filters, schoolLevels: toggleMultiSelect(filters.schoolLevels, opt.value) })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        active
+                          ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
+                          : "bg-zinc-800 text-zinc-500 border border-zinc-700 hover:text-zinc-300 hover:border-zinc-600"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Institution Size */}
+            <div>
+              <label className="block text-xs text-zinc-400 mb-1.5 font-medium">Institution Size</label>
+              <div className="flex flex-wrap gap-1.5">
+                {SIZE_OPTIONS.map((opt) => {
+                  const active = filters.instSizes.includes(opt.value);
+                  return (
+                    <button
+                      key={opt.value}
+                      onClick={() => onFiltersChange({ ...filters, instSizes: toggleMultiSelect(filters.instSizes, opt.value) })}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        active
+                          ? "bg-violet-600/30 text-violet-300 border border-violet-500/40"
+                          : "bg-zinc-800 text-zinc-500 border border-zinc-700 hover:text-zinc-300 hover:border-zinc-600"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-zinc-700/50" />
+
+            {/* Toggle Filters */}
+            <div className="space-y-2">
+              {TOGGLE_FILTERS.map(({ key, label }) => (
+                <label key={key} className="flex items-center justify-between cursor-pointer group py-0.5">
+                  <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">{label}</span>
+                  <div className="relative">
+                    <input
+                      type="checkbox"
+                      checked={filters[key] as boolean}
+                      onChange={(e) => onFiltersChange({ ...filters, [key]: e.target.checked })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-9 h-5 rounded-full bg-zinc-700 peer-checked:bg-violet-600 transition-colors" />
+                    <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-zinc-300 peer-checked:translate-x-4 peer-checked:bg-white transition-transform" />
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-zinc-700/50" />
+
+            {/* Greek Life Section */}
+            <div>
+              <label className="block text-xs text-zinc-400 mb-2 font-medium">
+                <span className="flex items-center gap-1">
+                  <Users size={11} />
+                  Greek Life
+                </span>
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer group py-0.5 mb-2">
+                <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">Schools with Frats</span>
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={filters.showGreekLife}
+                    onChange={(e) => onFiltersChange({ ...filters, showGreekLife: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 rounded-full bg-zinc-700 peer-checked:bg-violet-600 transition-colors" />
+                  <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-zinc-300 peer-checked:translate-x-4 peer-checked:bg-white transition-transform" />
+                </div>
+              </label>
+
+              <div ref={fratInputRef}>
+                {selectedFrat ? (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-blue-500/30 rounded-lg">
+                    <span className="text-sm text-blue-300 flex-1 truncate">{selectedFrat}</span>
+                    <button
+                      onClick={() => onFratFilterChange?.("")}
+                      className="text-zinc-500 hover:text-white transition-colors shrink-0"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={fratQuery}
+                      onChange={(e) => {
+                        setFratQuery(e.target.value);
+                        setShowFratDropdown(true);
+                      }}
+                      onFocus={() => setShowFratDropdown(true)}
+                      placeholder="Search fraternities..."
+                      className="w-full px-3 py-2 pr-8 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-blue-500"
+                    />
+                    <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+                    {showFratDropdown && filteredFrats.length > 0 && (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-zinc-800 border border-zinc-700 rounded-lg shadow-xl max-h-40 overflow-y-auto z-50">
+                        {filteredFrats.map((name) => (
+                          <button
+                            key={name}
+                            onClick={() => handleFratSelect(name)}
+                            className="w-full px-3 py-2 text-left text-sm text-zinc-300 hover:bg-zinc-700 hover:text-white transition-colors"
+                          >
+                            {name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
 
-          <label className="mt-3 flex items-center gap-2.5 cursor-pointer group">
-            <div className="relative">
-              <input
-                type="checkbox"
-                checked={showTwoYear}
-                onChange={(e) => onShowTwoYearChange?.(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 rounded-full bg-zinc-700 peer-checked:bg-violet-600 transition-colors" />
-              <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-zinc-300 peer-checked:translate-x-4 peer-checked:bg-white transition-transform" />
-            </div>
-            <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">
-              Include 2-Year Colleges
-            </span>
-          </label>
-          <label className="mt-2 flex items-center gap-2.5 cursor-pointer group">
-            <div className="relative">
-              <input
-                type="checkbox"
-                checked={showOnline}
-                onChange={(e) => onShowOnlineChange?.(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 rounded-full bg-zinc-700 peer-checked:bg-violet-600 transition-colors" />
-              <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-zinc-300 peer-checked:translate-x-4 peer-checked:bg-white transition-transform" />
-            </div>
-            <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">
-              Include Remote Colleges
-            </span>
-          </label>
-          <label className="mt-2 flex items-center gap-2.5 cursor-pointer group">
-            <div className="relative">
-              <input
-                type="checkbox"
-                checked={showPrivate}
-                onChange={(e) => onShowPrivateChange?.(e.target.checked)}
-                className="sr-only peer"
-              />
-              <div className="w-9 h-5 rounded-full bg-zinc-700 peer-checked:bg-violet-600 transition-colors" />
-              <div className="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-zinc-300 peer-checked:translate-x-4 peer-checked:bg-white transition-transform" />
-            </div>
-            <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">
-              Include Private Schools
-            </span>
-          </label>
-          <div className="mt-3 flex gap-2">
-            {hasActiveFilters && (
+            {/* Actions */}
+            <div className="flex gap-2 pt-1">
+              {hasActiveFilters && (
+                <button
+                  onClick={handleReset}
+                  className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-lg transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <RotateCcw size={13} />
+                  Reset
+                </button>
+              )}
               <button
-                onClick={handleFilterClear}
-                className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-sm font-medium rounded-lg transition-colors"
+                onClick={() => setShowFilters(false)}
+                className="flex-1 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
               >
-                Clear
+                Apply Filters
               </button>
-            )}
-            <button
-              onClick={handleFilterApply}
-              className="flex-1 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              Apply Filters
-            </button>
+            </div>
           </div>
         </div>
       )}
