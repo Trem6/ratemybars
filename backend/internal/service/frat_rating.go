@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ratemybars/backend/internal/middleware"
 	"github.com/ratemybars/backend/internal/model"
 )
@@ -19,18 +21,45 @@ type fratKey struct {
 // FratRatingService manages fraternity chapter ratings with spam prevention.
 type FratRatingService struct {
 	mu      sync.RWMutex
+	pool    *pgxpool.Pool
 	ratings []model.FratRating
 	nextID  int
 
 	userDailyCounts map[string]*dailyCount
 }
 
-func NewFratRatingService() *FratRatingService {
-	return &FratRatingService{
+func NewFratRatingService(pool *pgxpool.Pool) *FratRatingService {
+	svc := &FratRatingService{
+		pool:            pool,
 		ratings:         []model.FratRating{},
 		nextID:          1,
 		userDailyCounts: make(map[string]*dailyCount),
 	}
+	if pool != nil {
+		svc.loadFromDB()
+	}
+	return svc
+}
+
+func (s *FratRatingService) loadFromDB() {
+	rows, err := s.pool.Query(context.Background(),
+		`SELECT id, frat_name, school_id, score, author_id, COALESCE(author_name,''), created_at FROM frat_ratings ORDER BY created_at`)
+	if err != nil {
+		log.Printf("WARNING: Failed to load frat ratings from DB: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var r model.FratRating
+		if err := rows.Scan(&r.ID, &r.FratName, &r.SchoolID, &r.Score, &r.AuthorID, &r.AuthorName, &r.CreatedAt); err != nil {
+			log.Printf("WARNING: Failed to scan frat rating row: %v", err)
+			continue
+		}
+		s.ratings = append(s.ratings, r)
+		s.nextID++
+	}
+	log.Printf("Loaded %d frat ratings from DB", len(s.ratings))
 }
 
 // Create adds a new frat rating. One rating per user per (frat, school) pair.
@@ -40,8 +69,8 @@ func (s *FratRatingService) Create(ctx context.Context, req model.CreateFratRati
 		return nil, fmt.Errorf("authentication required")
 	}
 
-	if req.Score != 1 && req.Score != 5 {
-		return nil, fmt.Errorf("score must be 1 (thumbs down) or 5 (thumbs up)")
+	if req.Score < 1 || req.Score > 5 {
+		return nil, fmt.Errorf("score must be between 1 and 5")
 	}
 	if req.FratName == "" {
 		return nil, fmt.Errorf("frat_name is required")
@@ -81,6 +110,17 @@ func (s *FratRatingService) Create(ctx context.Context, req model.CreateFratRati
 		s.userDailyCounts[userID] = &dailyCount{count: 1, date: today}
 	} else {
 		dc.count++
+	}
+
+	if s.pool != nil {
+		_, err := s.pool.Exec(context.Background(),
+			`INSERT INTO frat_ratings (id, frat_name, school_id, score, author_id, author_name, created_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7)
+			 ON CONFLICT (frat_name, school_id, author_id) DO NOTHING`,
+			rating.ID, rating.FratName, rating.SchoolID, rating.Score, rating.AuthorID, rating.AuthorName, rating.CreatedAt)
+		if err != nil {
+			log.Printf("WARNING: Failed to persist frat rating: %v", err)
+		}
 	}
 
 	return &rating, nil

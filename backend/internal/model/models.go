@@ -65,6 +65,8 @@ type Rating struct {
 	AuthorID   string    `json:"author_id"`
 	AuthorName string    `json:"author_name,omitempty"`
 	CreatedAt  time.Time `json:"created_at"`
+	Upvotes    int       `json:"upvotes"`
+	Downvotes  int       `json:"downvotes"`
 }
 
 // User represents an authenticated user.

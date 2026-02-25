@@ -63,6 +63,31 @@ func (h *RatingHandler) ListByVenue(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, ratings)
 }
 
+// VoteOnRating handles POST /api/ratings/{id}/vote
+func (h *RatingHandler) VoteOnRating(w http.ResponseWriter, r *http.Request) {
+	ratingID := chi.URLParam(r, "id")
+
+	var req struct {
+		Direction string `json:"direction"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	upvotes, downvotes, err := h.svc.Vote(r.Context(), ratingID, req.Direction)
+	if err != nil {
+		status := http.StatusBadRequest
+		if err.Error() == "authentication required" {
+			status = http.StatusUnauthorized
+		}
+		writeError(w, status, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]int{"upvotes": upvotes, "downvotes": downvotes})
+}
+
 // ListBySchool handles GET /api/schools/{id}/ratings — returns recent reviews across all venues at a school.
 func (h *RatingHandler) ListBySchool(w http.ResponseWriter, r *http.Request) {
 	schoolID := chi.URLParam(r, "id")

@@ -31,40 +31,48 @@ func main() {
 		frontendURL = "http://localhost:3000"
 	}
 
-	// Initialize services
-	schoolSvc := service.NewSchoolService()
-	venueSvc := service.NewVenueService()
-	ratingSvc := service.NewRatingService()
-
-	// Connect to PostgreSQL (Supabase) for persistent auth
-	// Falls back to in-memory auth if DATABASE_URL is not set
+	// Connect to PostgreSQL (Supabase) for persistence
+	var dbPool *pgxpool.Pool
 	var authSvc *service.AuthService
+
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL != "" {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
-		dbPool, err := pgxpool.New(ctx, dbURL)
+		pool, err := pgxpool.New(ctx, dbURL)
 		if err != nil {
-			log.Printf("WARNING: Failed to connect to database: %v (falling back to in-memory auth)", err)
-			authSvc = service.NewAuthServiceInMemory()
-		} else if err := dbPool.Ping(ctx); err != nil {
-			log.Printf("WARNING: Failed to ping database: %v (falling back to in-memory auth)", err)
-			dbPool.Close()
-			authSvc = service.NewAuthServiceInMemory()
+			log.Printf("WARNING: Failed to connect to database: %v (falling back to in-memory)", err)
+		} else if err := pool.Ping(ctx); err != nil {
+			log.Printf("WARNING: Failed to ping database: %v (falling back to in-memory)", err)
+			pool.Close()
 		} else {
 			log.Println("Connected to PostgreSQL database")
-			authSvc = service.NewAuthService(dbPool)
-			if err := authSvc.Migrate(context.Background()); err != nil {
-				log.Fatalf("Failed to run database migrations: %v", err)
-			}
-			log.Println("Database migrations complete")
+			dbPool = pool
 			defer dbPool.Close()
 		}
 	} else {
-		log.Println("WARNING: DATABASE_URL not set, using in-memory auth (accounts will not persist across restarts)")
+		log.Println("WARNING: DATABASE_URL not set, using in-memory storage (data will not persist across restarts)")
+	}
+
+	// Run all migrations if DB is available
+	if dbPool != nil {
+		authSvc = service.NewAuthService(dbPool)
+		if err := authSvc.Migrate(context.Background()); err != nil {
+			log.Fatalf("Failed to run auth migrations: %v", err)
+		}
+		if err := service.RunMigrations(context.Background(), dbPool); err != nil {
+			log.Fatalf("Failed to run data migrations: %v", err)
+		}
+		log.Println("Database migrations complete")
+	} else {
 		authSvc = service.NewAuthServiceInMemory()
 	}
+
+	// Initialize services (pass dbPool; nil = in-memory only)
+	schoolSvc := service.NewSchoolService()
+	venueSvc := service.NewVenueService(dbPool)
+	ratingSvc := service.NewRatingService(dbPool)
 
 	// Load school data: prefer DATA_PATH env var, then local files, then embedded
 	dataPath := os.Getenv("DATA_PATH")
@@ -159,8 +167,8 @@ func main() {
 	log.Printf("Updated avg ratings for %d schools", len(schoolAvgs))
 
 	// Load fraternity data
-	fratSvc := service.NewFraternityService()
-	fratRatingSvc := service.NewFratRatingService()
+	fratSvc := service.NewFraternityService(dbPool)
+	fratRatingSvc := service.NewFratRatingService(dbPool)
 	if err := fratSvc.Load(seeddata.FraternitiesJSON); err != nil {
 		log.Printf("WARNING: Failed to load fraternity data: %v", err)
 	} else {
@@ -259,11 +267,7 @@ func main() {
 							schoolName = s.Name
 						}
 					}
-					vote := "upvoted"
-					if rating.Score <= 2 {
-						vote = "downvoted"
-					}
-					text := fmt.Sprintf("%s %s %s", rating.AuthorName, vote, venueName)
+				text := fmt.Sprintf("%s rated %s %.0f/5", rating.AuthorName, venueName, rating.Score)
 					if schoolName != "" {
 						text += " at " + schoolName
 					}
@@ -343,6 +347,7 @@ func main() {
 			r.Get("/auth/me", authHandler.Me)
 			r.Post("/venues", venueHandler.Create)
 			r.Post("/ratings", ratingHandler.Create)
+			r.Post("/ratings/{id}/vote", ratingHandler.VoteOnRating)
 			r.Post("/frat-ratings", fratHandler.CreateRating)
 		})
 

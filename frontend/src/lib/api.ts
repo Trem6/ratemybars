@@ -118,16 +118,16 @@ export interface FilterState {
 }
 
 export const DEFAULT_FILTERS: FilterState = {
-  controlTypes: ["public", "private_nonprofit"],
-  schoolLevels: [1],
+  controlTypes: ["public", "private_nonprofit", "private_forprofit"],
+  schoolLevels: [1, 2, 3],
   instSizes: [1, 2, 3, 4, 5],
-  showReligious: false,
-  showHBCU: false,
-  showTribal: false,
-  showOnline: false,
-  showCommunityCollege: false,
-  showLiberalArts: false,
-  showGraduateOnly: false,
+  showReligious: true,
+  showHBCU: true,
+  showTribal: true,
+  showOnline: true,
+  showCommunityCollege: true,
+  showLiberalArts: true,
+  showGraduateOnly: true,
   showGreekLife: false,
 };
 
@@ -165,6 +165,8 @@ export interface Rating {
   author_id: string;
   author_name?: string;
   created_at: string;
+  upvotes: number;
+  downvotes: number;
 }
 
 export interface FratWithRating {
@@ -288,6 +290,12 @@ export const createRating = (data: {
   apiFetch<Rating>("/api/ratings", {
     method: "POST",
     body: JSON.stringify(data),
+  });
+
+export const voteOnRating = (id: string, direction: "up" | "down") =>
+  apiFetch<{ upvotes: number; downvotes: number }>(`/api/ratings/${id}/vote`, {
+    method: "POST",
+    body: JSON.stringify({ direction }),
   });
 
 export const createFratRating = (data: {

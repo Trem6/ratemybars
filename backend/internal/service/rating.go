@@ -3,9 +3,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ratemybars/backend/internal/middleware"
 	"github.com/ratemybars/backend/internal/model"
 )
@@ -15,10 +17,10 @@ const maxRatingsPerDay = 20
 // RatingService manages rating CRUD with spam prevention.
 type RatingService struct {
 	mu      sync.RWMutex
+	pool    *pgxpool.Pool
 	ratings []model.Rating
 	nextID  int
 
-	// Track ratings per user per day for spam prevention
 	userDailyCounts map[string]*dailyCount
 }
 
@@ -27,12 +29,39 @@ type dailyCount struct {
 	date  string // YYYY-MM-DD
 }
 
-func NewRatingService() *RatingService {
-	return &RatingService{
+func NewRatingService(pool *pgxpool.Pool) *RatingService {
+	svc := &RatingService{
+		pool:            pool,
 		ratings:         []model.Rating{},
 		nextID:          1,
 		userDailyCounts: make(map[string]*dailyCount),
 	}
+	if pool != nil {
+		svc.loadFromDB()
+	}
+	return svc
+}
+
+func (s *RatingService) loadFromDB() {
+	rows, err := s.pool.Query(context.Background(),
+		`SELECT id, score, COALESCE(review,''), venue_id, author_id, COALESCE(author_name,''), created_at, upvotes, downvotes
+		 FROM ratings ORDER BY created_at`)
+	if err != nil {
+		log.Printf("WARNING: Failed to load ratings from DB: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var r model.Rating
+		if err := rows.Scan(&r.ID, &r.Score, &r.Review, &r.VenueID, &r.AuthorID, &r.AuthorName, &r.CreatedAt, &r.Upvotes, &r.Downvotes); err != nil {
+			log.Printf("WARNING: Failed to scan rating row: %v", err)
+			continue
+		}
+		s.ratings = append(s.ratings, r)
+		s.nextID++
+	}
+	log.Printf("Loaded %d ratings from DB", len(s.ratings))
 }
 
 // Create adds a new rating with spam prevention.
@@ -42,9 +71,8 @@ func (s *RatingService) Create(ctx context.Context, req model.CreateRatingReques
 		return nil, fmt.Errorf("authentication required")
 	}
 
-	// Validate score: thumbs down (1) or thumbs up (5)
-	if req.Score != 1 && req.Score != 5 {
-		return nil, fmt.Errorf("score must be 1 (thumbs down) or 5 (thumbs up)")
+	if req.Score < 1 || req.Score > 5 {
+		return nil, fmt.Errorf("score must be between 1 and 5")
 	}
 
 	if req.VenueID == "" {
@@ -54,14 +82,12 @@ func (s *RatingService) Create(ctx context.Context, req model.CreateRatingReques
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Check daily limit (spam prevention)
 	today := time.Now().Format("2006-01-02")
 	dc, exists := s.userDailyCounts[userID]
 	if exists && dc.date == today && dc.count >= maxRatingsPerDay {
 		return nil, fmt.Errorf("daily rating limit reached (%d per day)", maxRatingsPerDay)
 	}
 
-	// Check uniqueness constraint: one rating per user per venue
 	for _, r := range s.ratings {
 		if r.VenueID == req.VenueID && r.AuthorID == userID {
 			return nil, fmt.Errorf("you have already rated this venue")
@@ -80,14 +106,111 @@ func (s *RatingService) Create(ctx context.Context, req model.CreateRatingReques
 	s.nextID++
 	s.ratings = append(s.ratings, rating)
 
-	// Update daily count
 	if !exists || dc.date != today {
 		s.userDailyCounts[userID] = &dailyCount{count: 1, date: today}
 	} else {
 		dc.count++
 	}
 
+	if s.pool != nil {
+		_, err := s.pool.Exec(context.Background(),
+			`INSERT INTO ratings (id, score, review, venue_id, author_id, author_name, created_at, upvotes, downvotes)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, 0, 0)
+			 ON CONFLICT (venue_id, author_id) DO NOTHING`,
+			rating.ID, rating.Score, rating.Review, rating.VenueID, rating.AuthorID, rating.AuthorName, rating.CreatedAt)
+		if err != nil {
+			log.Printf("WARNING: Failed to persist rating: %v", err)
+		}
+	}
+
 	return &rating, nil
+}
+
+// Vote allows a user to upvote or downvote a review. Toggle semantics:
+// voting the same direction again removes the vote.
+func (s *RatingService) Vote(ctx context.Context, ratingID, direction string) (upvotes, downvotes int, err error) {
+	userID := middleware.GetUserID(ctx)
+	if userID == "" {
+		return 0, 0, fmt.Errorf("authentication required")
+	}
+	if direction != "up" && direction != "down" {
+		return 0, 0, fmt.Errorf("direction must be 'up' or 'down'")
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	idx := -1
+	for i := range s.ratings {
+		if s.ratings[i].ID == ratingID {
+			idx = i
+			break
+		}
+	}
+	if idx == -1 {
+		return 0, 0, fmt.Errorf("rating not found")
+	}
+
+	if s.ratings[idx].AuthorID == userID {
+		return 0, 0, fmt.Errorf("cannot vote on your own review")
+	}
+
+	if s.pool != nil {
+		var existing string
+		err := s.pool.QueryRow(context.Background(),
+			`SELECT direction FROM review_votes WHERE rating_id=$1 AND user_id=$2`,
+			ratingID, userID).Scan(&existing)
+
+		if err == nil {
+			// Existing vote found
+			if existing == direction {
+				// Same direction: remove vote (toggle off)
+				_, _ = s.pool.Exec(context.Background(),
+					`DELETE FROM review_votes WHERE rating_id=$1 AND user_id=$2`, ratingID, userID)
+				if direction == "up" {
+					s.ratings[idx].Upvotes--
+				} else {
+					s.ratings[idx].Downvotes--
+				}
+			} else {
+				// Different direction: switch vote
+				_, _ = s.pool.Exec(context.Background(),
+					`UPDATE review_votes SET direction=$1 WHERE rating_id=$2 AND user_id=$3`,
+					direction, ratingID, userID)
+				if direction == "up" {
+					s.ratings[idx].Upvotes++
+					s.ratings[idx].Downvotes--
+				} else {
+					s.ratings[idx].Downvotes++
+					s.ratings[idx].Upvotes--
+				}
+			}
+		} else {
+			// No existing vote: insert
+			_, _ = s.pool.Exec(context.Background(),
+				`INSERT INTO review_votes (rating_id, user_id, direction) VALUES ($1, $2, $3)`,
+				ratingID, userID, direction)
+			if direction == "up" {
+				s.ratings[idx].Upvotes++
+			} else {
+				s.ratings[idx].Downvotes++
+			}
+		}
+
+		// Sync counts back to ratings table
+		_, _ = s.pool.Exec(context.Background(),
+			`UPDATE ratings SET upvotes=$1, downvotes=$2 WHERE id=$3`,
+			s.ratings[idx].Upvotes, s.ratings[idx].Downvotes, ratingID)
+	} else {
+		// In-memory only: simple toggle (no per-user tracking without DB)
+		if direction == "up" {
+			s.ratings[idx].Upvotes++
+		} else {
+			s.ratings[idx].Downvotes++
+		}
+	}
+
+	return s.ratings[idx].Upvotes, s.ratings[idx].Downvotes, nil
 }
 
 // ListByVenue returns all ratings for a venue.
@@ -116,37 +239,41 @@ func (s *RatingService) LoadSeedData(venues []struct{ ID string }) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Skip seed data if we already loaded real data from DB
+	if len(s.ratings) > 0 {
+		return
+	}
+
 	reviews := []struct {
 		Score  float32
 		Review string
 		Author string
 	}{
 		{5, "Best bar near campus, always a great time!", "PartyGator22"},
-		{5, "Good drinks, gets really packed on weekends", "NightOwl99"},
+		{4, "Good drinks, gets really packed on weekends", "NightOwl99"},
 		{5, "Legendary spot, every student needs to go here", "CollegeLyfe"},
-		{5, "Fun atmosphere, music could be better", "BarHopper23"},
-		{1, "Decent but overpriced drinks", "BudgetDrinker"},
+		{4, "Fun atmosphere, music could be better", "BarHopper23"},
+		{2, "Decent but overpriced drinks", "BudgetDrinker"},
 		{5, "This place is an absolute institution", "SeniorYear26"},
-		{5, "Great vibes on Thursday nights", "ThirstyThursday"},
+		{4, "Great vibes on Thursday nights", "ThirstyThursday"},
 		{5, "10/10 would recommend to any freshman", "CampusGuide"},
-		{1, "Long lines on weekends but worth the wait", "PatientParty"},
-		{5, "Love the outdoor area, perfect for warm nights", "PatioLover"},
+		{3, "Long lines on weekends but worth the wait", "PatientParty"},
+		{4, "Love the outdoor area, perfect for warm nights", "PatioLover"},
 		{5, "The bartenders are amazing and drinks are strong", "MixologyFan"},
-		{5, "My go-to spot every weekend", "Weekender101"},
-		{1, "Good for pregaming, not great for staying late", "PreGameKing"},
+		{4, "My go-to spot every weekend", "Weekender101"},
+		{3, "Good for pregaming, not great for staying late", "PreGameKing"},
 		{5, "Unforgettable memories made here", "Nostalgic26"},
-		{5, "Solid sports bar, great for game day", "TailgateKing"},
+		{4, "Solid sports bar, great for game day", "TailgateKing"},
 		{5, "Always a good crowd and good energy", "VibeChecker"},
 		{5, "Nothing beats this place on a Friday night", "FridayFanatic"},
-		{1, "It's okay, the hype is a bit much", "RealTalk420"},
-		{5, "Cheap drinks and a fun dance floor", "DanceFloorDiva"},
+		{2, "It's okay, the hype is a bit much", "RealTalk420"},
+		{4, "Cheap drinks and a fun dance floor", "DanceFloorDiva"},
 		{5, "A must-visit if you're in town", "TouristTips"},
 	}
 
 	reviewIdx := 0
 	for _, venue := range venues {
-		// Each venue gets 2-4 ratings
-		numRatings := 2 + (s.nextID % 3) // varies between 2, 3, 4
+		numRatings := 2 + (s.nextID % 3)
 		for i := 0; i < numRatings; i++ {
 			r := reviews[reviewIdx%len(reviews)]
 			rating := model.Rating{
@@ -250,7 +377,6 @@ func (s *RatingService) GetRecent(limit int) []model.Rating {
 }
 
 // GetVenueThumbs returns thumbs up and thumbs down counts for a venue.
-// Thumbs up = score >= 4, thumbs down = score <= 2.
 func (s *RatingService) GetVenueThumbs(venueID string) (up, down int) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

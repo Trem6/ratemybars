@@ -1,11 +1,14 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"sort"
 	"sync"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ratemybars/backend/internal/model"
 )
 
@@ -20,27 +23,28 @@ type StatsFunc func(schoolID string) map[string]model.FratWithRating
 // FraternityService provides access to fraternity chapter data with live rating stats.
 type FraternityService struct {
 	mu       sync.RWMutex
+	pool     *pgxpool.Pool
 	bySchool map[string][]string // school_id -> sorted fraternity names
 	byName   map[string][]string // frat_name -> school IDs
 	allNames []string            // sorted unique frat names
 	statsFn  StatsFunc
 }
 
-func NewFraternityService() *FraternityService {
+func NewFraternityService(pool *pgxpool.Pool) *FraternityService {
 	return &FraternityService{
+		pool:     pool,
 		bySchool: make(map[string][]string),
 		byName:   make(map[string][]string),
 	}
 }
 
-// SetStatsFunc sets the callback used to enrich fraternity listings with rating data.
 func (s *FraternityService) SetStatsFunc(fn StatsFunc) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.statsFn = fn
 }
 
-// Load parses the embedded fraternities.json data.
+// Load parses the embedded fraternities.json seed data, then merges DB additions.
 func (s *FraternityService) Load(data []byte) error {
 	var entries []fratEntry
 	if err := json.Unmarshal(data, &entries); err != nil {
@@ -60,6 +64,34 @@ func (s *FraternityService) Load(data []byte) error {
 		nameSet[e.Name] = true
 	}
 
+	// Merge DB-persisted fraternity links
+	if s.pool != nil {
+		rows, err := s.pool.Query(context.Background(), `SELECT school_id, frat_name FROM fraternity_links`)
+		if err != nil {
+			log.Printf("WARNING: Failed to load fraternity links from DB: %v", err)
+		} else {
+			defer rows.Close()
+			for rows.Next() {
+				var schoolID, fratName string
+				if err := rows.Scan(&schoolID, &fratName); err != nil {
+					continue
+				}
+				exists := false
+				for _, n := range s.bySchool[schoolID] {
+					if n == fratName {
+						exists = true
+						break
+					}
+				}
+				if !exists {
+					s.bySchool[schoolID] = append(s.bySchool[schoolID], fratName)
+					s.byName[fratName] = append(s.byName[fratName], schoolID)
+					nameSet[fratName] = true
+				}
+			}
+		}
+	}
+
 	for schoolID := range s.bySchool {
 		sort.Strings(s.bySchool[schoolID])
 	}
@@ -73,21 +105,18 @@ func (s *FraternityService) Load(data []byte) error {
 	return nil
 }
 
-// ListAll returns all unique fraternity names, sorted.
 func (s *FraternityService) ListAll() []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.allNames
 }
 
-// GetSchoolsByFrat returns the school IDs that have a given fraternity.
 func (s *FraternityService) GetSchoolsByFrat(fratName string) []string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.byName[fratName]
 }
 
-// GetBySchool returns fraternities enriched with live rating data.
 func (s *FraternityService) GetBySchool(schoolID string) []model.FratWithRating {
 	s.mu.RLock()
 	names := s.bySchool[schoolID]
@@ -122,7 +151,6 @@ func (s *FraternityService) GetBySchool(schoolID string) []model.FratWithRating 
 	return result
 }
 
-// AddToSchool links a fraternity to a school. Returns false if already present.
 func (s *FraternityService) AddToSchool(fratName, schoolID string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -135,10 +163,8 @@ func (s *FraternityService) AddToSchool(fratName, schoolID string) bool {
 
 	s.bySchool[schoolID] = append(s.bySchool[schoolID], fratName)
 	sort.Strings(s.bySchool[schoolID])
-
 	s.byName[fratName] = append(s.byName[fratName], schoolID)
 
-	// Rebuild allNames if this is a new fraternity
 	found := false
 	for _, n := range s.allNames {
 		if n == fratName {
@@ -151,10 +177,18 @@ func (s *FraternityService) AddToSchool(fratName, schoolID string) bool {
 		sort.Strings(s.allNames)
 	}
 
+	if s.pool != nil {
+		_, err := s.pool.Exec(context.Background(),
+			`INSERT INTO fraternity_links (school_id, frat_name) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+			schoolID, fratName)
+		if err != nil {
+			log.Printf("WARNING: Failed to persist fraternity link: %v", err)
+		}
+	}
+
 	return true
 }
 
-// RemoveFromSchool unlinks a fraternity from a school. Returns false if not found.
 func (s *FraternityService) RemoveFromSchool(fratName, schoolID string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -185,7 +219,6 @@ func (s *FraternityService) RemoveFromSchool(fratName, schoolID string) bool {
 	}
 	if len(s.byName[fratName]) == 0 {
 		delete(s.byName, fratName)
-		// Remove from allNames
 		for i, n := range s.allNames {
 			if n == fratName {
 				s.allNames = append(s.allNames[:i], s.allNames[i+1:]...)
@@ -194,17 +227,24 @@ func (s *FraternityService) RemoveFromSchool(fratName, schoolID string) bool {
 		}
 	}
 
+	if s.pool != nil {
+		_, err := s.pool.Exec(context.Background(),
+			`DELETE FROM fraternity_links WHERE school_id=$1 AND frat_name=$2`,
+			schoolID, fratName)
+		if err != nil {
+			log.Printf("WARNING: Failed to delete fraternity link from DB: %v", err)
+		}
+	}
+
 	return true
 }
 
-// Count returns the number of fraternities at a school.
 func (s *FraternityService) Count(schoolID string) int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return len(s.bySchool[schoolID])
 }
 
-// SchoolCount returns the number of schools that have fraternities.
 func (s *FraternityService) SchoolCount() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"math"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/ratemybars/backend/internal/middleware"
 	"github.com/ratemybars/backend/internal/model"
 )
@@ -15,15 +17,46 @@ import (
 // VenueService manages venue CRUD operations.
 type VenueService struct {
 	mu     sync.RWMutex
+	pool   *pgxpool.Pool
 	venues []model.Venue
 	nextID int
 }
 
-func NewVenueService() *VenueService {
-	return &VenueService{
+func NewVenueService(pool *pgxpool.Pool) *VenueService {
+	svc := &VenueService{
+		pool:   pool,
 		venues: []model.Venue{},
 		nextID: 1,
 	}
+	if pool != nil {
+		svc.loadFromDB()
+	}
+	return svc
+}
+
+func (s *VenueService) loadFromDB() {
+	rows, err := s.pool.Query(context.Background(),
+		`SELECT id, name, category, COALESCE(description,''), COALESCE(address,''),
+		        COALESCE(latitude,0), COALESCE(longitude,0), school_id, COALESCE(created_by,''),
+		        created_at, verified
+		 FROM venues ORDER BY created_at`)
+	if err != nil {
+		log.Printf("WARNING: Failed to load venues from DB: %v", err)
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var v model.Venue
+		if err := rows.Scan(&v.ID, &v.Name, &v.Category, &v.Description, &v.Address,
+			&v.Latitude, &v.Longitude, &v.SchoolID, &v.CreatedByID, &v.CreatedAt, &v.Verified); err != nil {
+			log.Printf("WARNING: Failed to scan venue row: %v", err)
+			continue
+		}
+		s.venues = append(s.venues, v)
+		s.nextID++
+	}
+	log.Printf("Loaded %d venues from DB", len(s.venues))
 }
 
 // Create adds a new venue. Admin submissions are auto-approved.
@@ -68,6 +101,17 @@ func (s *VenueService) Create(ctx context.Context, req model.CreateVenueRequest)
 	}
 	s.nextID++
 	s.venues = append(s.venues, venue)
+
+	if s.pool != nil {
+		_, err := s.pool.Exec(context.Background(),
+			`INSERT INTO venues (id, name, category, description, address, latitude, longitude, school_id, created_by, created_at, verified)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+			venue.ID, venue.Name, venue.Category, venue.Description, venue.Address,
+			venue.Latitude, venue.Longitude, venue.SchoolID, venue.CreatedByID, venue.CreatedAt, venue.Verified)
+		if err != nil {
+			log.Printf("WARNING: Failed to persist venue: %v", err)
+		}
+	}
 
 	return &venue, nil
 }
@@ -146,6 +190,14 @@ func (s *VenueService) ApproveVenue(id string) error {
 	for i := range s.venues {
 		if s.venues[i].ID == id {
 			s.venues[i].Verified = true
+
+			if s.pool != nil {
+				_, err := s.pool.Exec(context.Background(),
+					`UPDATE venues SET verified=true WHERE id=$1`, id)
+				if err != nil {
+					log.Printf("WARNING: Failed to persist venue approval: %v", err)
+				}
+			}
 			return nil
 		}
 	}
@@ -163,6 +215,14 @@ func (s *VenueService) RejectVenue(id string) error {
 				return fmt.Errorf("cannot reject an already approved venue")
 			}
 			s.venues = append(s.venues[:i], s.venues[i+1:]...)
+
+			if s.pool != nil {
+				_, err := s.pool.Exec(context.Background(),
+					`DELETE FROM venues WHERE id=$1`, id)
+				if err != nil {
+					log.Printf("WARNING: Failed to delete rejected venue from DB: %v", err)
+				}
+			}
 			return nil
 		}
 	}
@@ -177,6 +237,14 @@ func (s *VenueService) DeleteVenue(id string) error {
 	for i := range s.venues {
 		if s.venues[i].ID == id {
 			s.venues = append(s.venues[:i], s.venues[i+1:]...)
+
+			if s.pool != nil {
+				_, err := s.pool.Exec(context.Background(),
+					`DELETE FROM venues WHERE id=$1`, id)
+				if err != nil {
+					log.Printf("WARNING: Failed to delete venue from DB: %v", err)
+				}
+			}
 			return nil
 		}
 	}
@@ -229,6 +297,11 @@ func (s *VenueService) LoadSeedData(seeds []struct {
 }) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// Skip seed data if we already loaded real data from DB
+	if len(s.venues) > 0 {
+		return
+	}
 
 	for _, seed := range seeds {
 		venue := model.Venue{

@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Star, ThumbsUp, ThumbsDown, MapPin, Beer, Music, Users, PartyPopper, HelpCircle, Clock } from "lucide-react";
-import { getVenue, getVenueRatings, type Venue, type Rating } from "@/lib/api";
+import { ArrowLeft, Star, ChevronUp, ChevronDown, MapPin, Beer, Music, Users, PartyPopper, HelpCircle, Clock } from "lucide-react";
+import { getVenue, getVenueRatings, voteOnRating, type Venue, type Rating } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import RatingForm from "@/components/RatingForm";
 
 const categoryConfig: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
@@ -15,9 +16,53 @@ const categoryConfig: Record<string, { icon: React.ReactNode; label: string; col
   other: { icon: <HelpCircle size={18} />, label: "Other", color: "text-zinc-400 bg-zinc-500/10" },
 };
 
+function ReviewVoteButtons({ rating, userId }: { rating: Rating; userId?: string }) {
+  const [upvotes, setUpvotes] = useState(rating.upvotes || 0);
+  const [downvotes, setDownvotes] = useState(rating.downvotes || 0);
+  const [voting, setVoting] = useState(false);
+
+  const handleVote = async (direction: "up" | "down") => {
+    if (!userId || voting) return;
+    setVoting(true);
+    try {
+      const result = await voteOnRating(rating.id, direction);
+      setUpvotes(result.upvotes);
+      setDownvotes(result.downvotes);
+    } catch {
+      // Silently ignore vote errors (not logged in, already voted, etc.)
+    } finally {
+      setVoting(false);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-0.5">
+      <button
+        onClick={() => handleVote("up")}
+        disabled={!userId || voting}
+        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs text-zinc-400 hover:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 disabled:cursor-default transition-colors"
+        title={userId ? "Upvote" : "Log in to vote"}
+      >
+        <ChevronUp size={14} />
+        <span>{upvotes}</span>
+      </button>
+      <button
+        onClick={() => handleVote("down")}
+        disabled={!userId || voting}
+        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs text-zinc-400 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 disabled:cursor-default transition-colors"
+        title={userId ? "Downvote" : "Log in to vote"}
+      >
+        <ChevronDown size={14} />
+        <span>{downvotes}</span>
+      </button>
+    </div>
+  );
+}
+
 export default function VenuePage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const id = params.id as string;
   const [venue, setVenue] = useState<Venue | null>(null);
   const [ratings, setRatings] = useState<Rating[]>([]);
@@ -130,17 +175,7 @@ export default function VenuePage() {
                 {venue.avg_rating > 0 ? venue.avg_rating.toFixed(1) : "N/A"}
               </span>
             </div>
-            <div className="flex items-center justify-end gap-3 text-xs">
-              <span className="flex items-center gap-1 text-emerald-400">
-                <ThumbsUp size={12} fill="currentColor" />
-                {venue.thumbs_up || 0}
-              </span>
-              <span className="flex items-center gap-1 text-red-400">
-                <ThumbsDown size={12} fill="currentColor" />
-                {venue.thumbs_down || 0}
-              </span>
-              <span className="text-zinc-500">{venue.rating_count} votes</span>
-            </div>
+            <p className="text-xs text-zinc-500">{venue.rating_count} {venue.rating_count === 1 ? "review" : "reviews"}</p>
           </div>
         </div>
 
@@ -172,8 +207,8 @@ export default function VenuePage() {
 
         {ratings.length === 0 ? (
           <div className="text-center py-8 bg-zinc-900/50 border border-zinc-800/50 rounded-xl">
-            <ThumbsUp size={24} className="mx-auto text-zinc-600 mb-2" />
-            <p className="text-zinc-500 text-sm">No votes yet. Be the first!</p>
+            <Star size={24} className="mx-auto text-zinc-600 mb-2" />
+            <p className="text-zinc-500 text-sm">No reviews yet. Be the first!</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -191,22 +226,29 @@ export default function VenuePage() {
                       {rating.author_name || "Anonymous"}
                     </span>
                   </div>
-                  {rating.score >= 4 ? (
-                    <span className="flex items-center gap-1 text-emerald-400 text-xs font-medium">
-                      <ThumbsUp size={14} fill="currentColor" />
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 text-red-400 text-xs font-medium">
-                      <ThumbsDown size={14} fill="currentColor" />
-                    </span>
-                  )}
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star
+                        key={i}
+                        size={12}
+                        className={
+                          i <= Math.round(rating.score)
+                            ? "text-amber-400 fill-amber-400"
+                            : "text-zinc-600"
+                        }
+                      />
+                    ))}
+                  </div>
                 </div>
                 {rating.review && (
                   <p className="text-zinc-300 text-sm">{rating.review}</p>
                 )}
-                <div className="flex items-center gap-1 mt-2 text-xs text-zinc-500">
-                  <Clock size={12} />
-                  {new Date(rating.created_at).toLocaleDateString()}
+                <div className="flex items-center justify-between mt-2">
+                  <div className="flex items-center gap-1 text-xs text-zinc-500">
+                    <Clock size={12} />
+                    {new Date(rating.created_at).toLocaleDateString()}
+                  </div>
+                  <ReviewVoteButtons rating={rating} userId={user?.id} />
                 </div>
               </div>
             ))}

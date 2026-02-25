@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Star, ThumbsUp, ThumbsDown, MapPin, Beer, Music, Users, PartyPopper, HelpCircle } from "lucide-react";
+import { Star, MapPin, Beer, Music, Users, PartyPopper, HelpCircle } from "lucide-react";
 
 interface VenueCardProps {
   venue: {
@@ -12,8 +12,6 @@ interface VenueCardProps {
     address?: string;
     avg_rating: number;
     rating_count: number;
-    thumbs_up?: number;
-    thumbs_down?: number;
     verified: boolean;
   };
   compact?: boolean;
@@ -43,23 +41,24 @@ const categoryColors: Record<string, string> = {
   other: "text-zinc-400 bg-zinc-500/10",
 };
 
-function VenueRating({ rating, thumbsUp, thumbsDown }: { rating: number; thumbsUp?: number; thumbsDown?: number }) {
+function VenueRating({ rating, count }: { rating: number; count: number }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5">
       <div className="flex items-center gap-0.5">
-        <Star size={12} className={rating > 0 ? "text-amber-400 fill-amber-400" : "text-zinc-600"} />
-        <span className="text-xs text-zinc-400">{rating > 0 ? rating.toFixed(1) : "N/A"}</span>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <Star
+            key={i}
+            size={12}
+            className={
+              i <= Math.round(rating) ? "text-amber-400 fill-amber-400" : "text-zinc-600"
+            }
+          />
+        ))}
       </div>
-      <div className="flex items-center gap-1.5 text-[10px]">
-        <span className="flex items-center gap-0.5 text-emerald-400">
-          <ThumbsUp size={10} fill="currentColor" />
-          {thumbsUp || 0}
-        </span>
-        <span className="flex items-center gap-0.5 text-red-400">
-          <ThumbsDown size={10} fill="currentColor" />
-          {thumbsDown || 0}
-        </span>
-      </div>
+      <span className="text-xs text-zinc-400">
+        {rating > 0 ? rating.toFixed(1) : "N/A"}
+      </span>
+      <span className="text-[10px] text-zinc-500">({count})</span>
     </div>
   );
 }
@@ -86,7 +85,7 @@ export default function VenueCard({ venue, compact = false }: VenueCardProps) {
               {venue.name}
             </h4>
           </div>
-          <VenueRating rating={venue.avg_rating} thumbsUp={venue.thumbs_up} thumbsDown={venue.thumbs_down} />
+          <VenueRating rating={venue.avg_rating} count={venue.rating_count} />
         </div>
       </Link>
     );
@@ -122,7 +121,7 @@ export default function VenueCard({ venue, compact = false }: VenueCardProps) {
           )}
         </div>
         <div className="shrink-0">
-          <VenueRating rating={venue.avg_rating} thumbsUp={venue.thumbs_up} thumbsDown={venue.thumbs_down} />
+          <VenueRating rating={venue.avg_rating} count={venue.rating_count} />
         </div>
       </div>
     </Link>
