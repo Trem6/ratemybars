@@ -1,8 +1,8 @@
 // import_schools.go - Import IPEDS school data from CSV into JSON format.
 // Usage: go run scripts/import_schools.go -input path/to/hd2024.csv -output data/schools.json
 //
-// Includes: SECTOR 1-6 (all 4-year and 2-year degree-granting institutions).
-// Excludes: SECTOR 7-9 (less-than-2-year), SECTOR 0/99 (unknown/admin).
+// Includes: SECTOR 1-9 (all degree-granting institutions including <2-year/trade schools).
+// Excludes: SECTOR 0/99 (unknown/admin).
 // When the full IPEDS dataset CSV is available, run this script to generate
 // the schools.json consumed by the backend.
 
@@ -125,7 +125,7 @@ func main() {
 		}
 
 		sector := getInt(row, "SECTOR")
-		if sector < 1 || sector > 6 {
+		if sector < 1 || sector > 9 {
 			continue
 		}
 

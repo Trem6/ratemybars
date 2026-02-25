@@ -37,7 +37,7 @@ const TOGGLE_FILTERS: { key: keyof FilterState; label: string }[] = [
   { key: "showHBCU", label: "HBCU" },
   { key: "showTribal", label: "Tribal Colleges" },
   { key: "showOnline", label: "Online Only" },
-  { key: "showCommunityCollege", label: "Community Colleges" },
+  { key: "showCommunityCollege", label: "CC / Trade School / Other" },
   { key: "showLiberalArts", label: "Liberal Arts" },
   { key: "showGraduateOnly", label: "Graduate Only" },
 ];
