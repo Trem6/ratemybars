@@ -1,8 +1,8 @@
 // import_schools.go - Import IPEDS school data from CSV into JSON format.
 // Usage: go run scripts/import_schools.go -input path/to/hd2024.csv -output data/schools.json
 //
-// Includes: SECTOR 1-9 (all degree-granting institutions including <2-year/trade schools).
-// Excludes: SECTOR 0/99 (unknown/admin).
+// Includes all 6,072 IPEDS institutions (all sectors).
+// Only excludes rows with missing lat/lon coordinates.
 // When the full IPEDS dataset CSV is available, run this script to generate
 // the schools.json consumed by the backend.
 
@@ -124,31 +124,30 @@ func main() {
 			continue
 		}
 
-		sector := getInt(row, "SECTOR")
-		if sector < 1 || sector > 9 {
-			continue
-		}
-
 		lat := getFloat(row, "LATITUDE")
 		lon := getFloat(row, "LONGITUD")
 		if lat == 0 || lon == 0 {
 			continue
 		}
 
+		sector := getInt(row, "SECTOR")
+
 		controlVal := getInt(row, "CONTROL")
-		controlStr := "public"
+		var controlStr string
 		switch controlVal {
+		case 1:
+			controlStr = "public"
 		case 2:
 			controlStr = "private_nonprofit"
-		case 3:
+		default:
 			controlStr = "private_forprofit"
 		}
 
 		iclevel := getInt(row, "ICLEVEL")
-		instName := getCol(row, "INSTNM")
-		if iclevel == 1 && strings.Contains(strings.ToLower(instName), "community college") {
-			iclevel = 2
+		if iclevel < 1 || iclevel > 3 {
+			iclevel = 3
 		}
+		instName := getCol(row, "INSTNM")
 
 		// Derived boolean fields from IPEDS data
 		hbcu := getCol(row, "HBCU") == "1"
@@ -229,20 +228,16 @@ func main() {
 		log.Fatalf("Failed to write JSON: %v", err)
 	}
 
-	fourYear := 0
-	twoYear := 0
+	levelCounts := map[int]int{}
 	for _, s := range schools {
-		if s.ICLevel == 1 {
-			fourYear++
-		} else {
-			twoYear++
-		}
+		levelCounts[s.ICLevel]++
 	}
 
 	fmt.Printf("Import complete!\n")
 	fmt.Printf("  Total schools: %d\n", len(schools))
-	fmt.Printf("  4-year: %d\n", fourYear)
-	fmt.Printf("  2-year: %d\n", twoYear)
+	fmt.Printf("  4-year (ICL=1): %d\n", levelCounts[1])
+	fmt.Printf("  2-year (ICL=2): %d\n", levelCounts[2])
+	fmt.Printf("  <2-year (ICL=3): %d\n", levelCounts[3])
 	fmt.Printf("  States: %d\n", countStates(schools))
 	fmt.Printf("  HBCU: %d\n", stats.hbcu)
 	fmt.Printf("  Tribal: %d\n", stats.tribal)

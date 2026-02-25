@@ -34,6 +34,10 @@ function schoolPassesFilter(s: MapSchool, filters: FilterState, fratSchoolIds?: 
 }
 
 function buildMapFilter(filters: FilterState, fratSchoolIds?: string[]): maplibregl.FilterSpecification | null {
+  if (filters.controlTypes.length === 0 || filters.schoolLevels.length === 0 || filters.instSizes.length === 0) {
+    return ["==", ["get", "id"], ""] as maplibregl.FilterSpecification;
+  }
+
   const parts: maplibregl.ExpressionSpecification[] = [];
 
   // Institution type — use match expression for reliable multi-value check
